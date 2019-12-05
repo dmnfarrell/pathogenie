@@ -1,0 +1,21 @@
+Background
+----------
+
+Antiobiotic resistance gene finder with BLAST in Python.
+
+Dependencies
+------------
+
+pandas
+biopython
+
+
+Installation
+------------
+
+pip install pyamrfinder
+
+Links
+-----
+
+https://github.com/dmnfarrell/pyamrfinder
