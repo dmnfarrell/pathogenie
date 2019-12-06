@@ -1,5 +1,21 @@
 """
-python module with various methods for bacterial annotation and comparative analysis
+    Various methods for bacterial genomics.
+    Created Nov 2019
+    Copyright (C) Damien Farrell
+
+    This program is free software; you can redistribute it and/or
+    modify it under the terms of the GNU General Public License
+    as published by the Free Software Foundation; either version 3
+    of the License, or (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
 from __future__ import print_function
@@ -16,6 +32,10 @@ import seaborn as sns
 from matplotlib.colors import ListedColormap, LogNorm
 import numpy as np
 import pandas as pd
+
+home = os.path.expanduser("~")
+module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
+datadir = os.path.join(module_path, 'data')
 
 def fastq_to_dataframe(f, size=None):
     """Convert fastq to dataframe.
@@ -386,87 +406,6 @@ def draw_features(rec):
     plt.title(rec.id)
     plt.show()
 
-css='''
-body {
-    font-family: arial;
-}
-h1,h2,h3,h4,h5,h6 {margin:0.2em 0 0.25em 0; display:block;
-  font-family: Arial}
-
-@font-face{
-  font-family: open sans;
-  src: url('OpenSans-Regular.ttf');
-}
-
-.tinytable {
-    font-family:monospace;
-    font-size:12px;
-}
-.tinytable table{
-    margin:2px;
-    padding:3;
-}.tinytable td{
-    border-spacing: 0;
-    border:0px solid #b2a7a7;
-    border-width:0px 0px 0px 0px;
-    width: 80px;
-    white-space: nowrap;
-}
-.tinytable th{
-    text-align: left;
-    background-color: #F1F1F1;
-    border-width:0px 0px 0px 0px;
-}
-'''
-
-def contigs_from_prokka(gff_file, key):
-    """get contig features from prokka gff"""
-
-    from BCBio import GFF
-    res=[]
-    for rec in GFF.parse(open(gff_file)):
-        found=False
-        x=[]
-        if len(rec.seq)>80000:
-            continue
-        for feat in rec.features:
-            q=feat.qualifiers
-            #print q
-            try:
-                p = q['product'][0]
-                q['source'] = p
-                tag=q['locus_tag'][0]
-            except:
-                continue
-            if key in p or key=='any':
-                found=True
-            x.append([rec.id,p,str(feat.location),tag,len(rec.seq)])
-        if found is True:
-            res.extend(x)
-            #draw_features(rec)
-    df= pd.DataFrame(res,columns=['contig','product','loc','protein_id','size'])
-    return df
-
-def contig_report(files, outfile, key=None):
-    f=open(outfile,'w')
-    s='<html><head> <style> %s </style></head>' %css
-    s+='<h3>contigs with prokka annotated features</<h3>'
-    found=[]
-    for infile in files:
-        df = contigs_from_prokka(infile, key=key)
-        n=os.path.basename(infile)
-        df['name'] = n
-        c = list(df.contig.unique())
-        df=df[-df.contig.isin(found)]
-        s+='<div>\n'
-        if len(df)>0:
-            s+='<h4>%s</h4>' %(n)
-            s += df.set_index(['size','contig','protein_id']).sort_index().to_html(classes='tinytable')
-        s+='</div>\n'
-        found.extend(c)
-    f.write(s)
-    return
-
 #phylo trees
 
 def get_tree(aln, kind='nj'):
@@ -559,18 +498,18 @@ def ete_draw(t,fname=None,title='',mode='r',outfile='ete_tree.png'):
     #ts.branch_vertical_margin = 10
     ts.show_scale=False
     ts.scale =  800
-    ts.show_leaf_name = False    
+    ts.show_leaf_name = False
     ts.mode = mode
-    ts.title.add_face(TextFace(title, fsize=14), column=0)        
+    ts.title.add_face(TextFace(title, fsize=14), column=0)
     t.render(outfile,dpi=300,h=800,tree_style=ts)
     return ts
 
 def ete_colors(tree, colors=None):
     from ete3 import TreeStyle, TextFace, NodeStyle
-    for node in tree.traverse():  
+    for node in tree.traverse():
         if node.name in colors:
             #lbl = labels[node.name]
-            clr = colors[node.name]            
+            clr = colors[node.name]
             #node.add_face(TextFace(node.name, fsize=14), column=0, position='branch-right')
             #f2=TextFace(lbl)
             #node.add_face(f2, column=1, position='aligned')
@@ -582,16 +521,16 @@ def ete_colors(tree, colors=None):
 
 def ete_labels(tree, labels, column=1, position='aligned'):
     from ete3 import TreeStyle, TextFace
-    for node in tree.traverse():  
+    for node in tree.traverse():
         if node.name in labels:
-            lbl = labels[node.name]            
+            lbl = labels[node.name]
             f2=TextFace(lbl)
             node.add_face(f2, column=column, position=position)
             f2.margin_left = 10
-            
-def get_ete_tree(filename):    
+
+def get_ete_tree(filename):
     from ete3 import Tree, Phyloxml
     p = Phyloxml()
-    p.build_from_file(filename)   
+    p.build_from_file(filename)
     t = p.get_phylogeny()[0]
     return t

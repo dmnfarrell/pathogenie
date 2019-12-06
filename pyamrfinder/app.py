@@ -21,12 +21,28 @@
 """
 
 import sys,os,subprocess,glob
+import urllib
 import pandas as pd
 import numpy as np
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
 from . import tools
+
+home = os.path.expanduser("~")
+module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
+datadir = os.path.join(module_path, 'data')
+
+def fetch_sequence_db(name='card'):
+    """get sequences"""
+
+    path = datadir
+    if name == 'card':
+        url = 'https://github.com/tseemann/abricate/raw/master/db/card/sequences'
+    filename = os.path.join(path,"%s.fa" %name)
+    if not os.path.exists(filename):
+        urllib.request.urlretrieve(url, filename)
+    return
 
 def blast_card(ident=90,coverage=.75):
     """blast card seqs"""
@@ -47,7 +63,7 @@ def blast_card(ident=90,coverage=.75):
     bl = bl[cols]
     return bl
 
-def make_blast_database():
+def make_blast_database(filenames):
     """make blast dbs"""
 
     rec=[]
@@ -66,7 +82,6 @@ def get_card_hits(res, gene):
     """get blast hit results"""
 
     x = res[res.gene==gene]
-    print x
     found=[]
     nodes=[]
     for i,r in x.iterrows():
@@ -81,7 +96,7 @@ def get_card_hits(res, gene):
 
         s = SeqRecord(id=name,seq=s)
         found.append(s)
-        print name, r.gene, r['coverage'], r['pident'], len(s), node
+        print (name, r.gene, r['coverage'], r['pident'], len(s), node)
         #add card seq
         nodes.append(seqs[node])
 
@@ -92,7 +107,8 @@ def get_card_hits(res, gene):
     #maaft_alignment(seqfile)
     tools.clustal_alignment(seqfile)
 
-def run():
+def run(filename):
+    fetch_sequence_db()
 
     return
 
