@@ -87,21 +87,33 @@ class AMRFinderApp(Frame):
 
         self.menu = Menu(self.main)
         file_menu = Menu(self.menu,tearoff=0)
-
         filemenuitems = {'01New Project':{'cmd': self.new_project},
-                    '02Open Project':{'cmd': lambda: self.load_project(asksave=True)},
-                    #'03Close':{'cmd':self.closeProject},
+                    '02Load Fasta':{'cmd': lambda: self.load_fasta()},
                     '04sep':'',
-                    '11Quit':{'cmd':self.quit}}
+                    '06Quit':{'cmd':self.quit}}
         self.file_menu = self.create_pulldown(self.menu, filemenuitems, var=file_menu)
         self.menu.add_cascade(label='File',menu=self.file_menu['var'])
         self.main.config(menu=self.menu)
+
+        analysis_menu = Menu(self.menu,tearoff=0)
+        analysismenuitems = {'01Run':{'cmd': self.run}}
+        self.analysis_menu = self.create_pulldown(self.menu, analysismenuitems, var=analysis_menu)
+        self.menu.add_cascade(label='Analysis',menu=self.analysis_menu['var'])
         return
 
     def new_project(self):
         return
 
     def close_project(self):
+        return
+
+    def load_fasta(self):
+        """Load fasta files"""
+
+        return
+
+    def run(self):
+
         return
 
     def get_best_geometry(self):

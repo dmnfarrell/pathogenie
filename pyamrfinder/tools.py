@@ -106,29 +106,76 @@ def run_blastn(database, query, params='-e .1 -G 10'):
     #zipfile(out+'.xml', remove=True)
     return
 
-def local_blast(fastafile, database, ident=100, params='-e 10 -a 2', results='all'):
-    """Blast a blastdb and save hits to a dataframe.
-       Args:
-            fastafile: file with queries
-            database: name of blast db
-            ident: cutoff percentage identity
-            params: custom blast parameters (see blastall -h)
-            results: return 'all' or 'best'
-        Returns: dataframe of hits"""
+def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
+                    compress=False, cmd='blastn', cpus=2, show_cmd=False, **kwargs):
+    """Blast a local database.
+    Args:
+        database: local blast db name
+        query: sequences to query, list of strings or Bio.SeqRecords
+    Returns:
+        pandas dataframe with top blast results
+    """
 
-    outname = 'blast_result.csv'
-    run_blastn(database, fastafile, params)
-    cols = ['query', 'subj', 'pident', 'length', 'mismatch', 'gapopen', 'qstart',
-            'qend', 'sstart', 'send', 'evalue', 'bitscore']
-    res = pd.read_csv(outname, names=cols, sep='\t')
-    print ('found %s hits in db' %len(res))
-    res = res[res['pident']>=ident]
-    if results == 'best':
-        res = res.groupby('query').first().reset_index()
-    queries = fasta_to_dataframe(fastafile).reset_index()
-    res = res.merge(queries, left_on='query', right_on='name', how='left')
-    print ()
+    if output == None:
+        output = os.path.splitext(query)[0]+'_blast.txt'
+    from Bio.Blast.Applications import NcbiblastxCommandline
+    outfmt = '"6 qseqid sseqid qseq sseq pident qcovs length mismatch gapopen qstart qend sstart send evalue bitscore stitle"'
+    cline = NcbiblastxCommandline(query=query, cmd=cmd, db=database,
+                                 max_target_seqs=maxseqs,
+                                 outfmt=outfmt, out=output,
+                                 evalue=evalue, num_threads=cpus, **kwargs)
+    if show_cmd == True:
+        print (cline)
+    stdout, stderr = cline()
+    return
+
+def get_blast_results(filename):
+    """
+    Get blast results into dataframe. Assumes column names from local_blast method.
+    Returns:
+        dataframe
+    """
+
+    cols = ['qseqid','sseqid','qseq','sseq','pident','qcovs','length','mismatch','gapopen',
+            'qstart','qend','sstart','send','evalue','bitscore','stitle']
+    res = pd.read_csv(filename, names=cols, sep='\t') 
     return res
+
+def blast_sequences(database, seqs, labels=None, **kwargs):
+    """
+    Blast a set of sequences to a local or remote blast database
+    Args:
+        database: local or remote blast db name
+                  'nr', 'refseq_protein', 'pdb', 'swissprot' are valide remote dbs
+        seqs: sequences to query, list of strings or Bio.SeqRecords
+        labels: list of id names for sequences, optional but recommended
+    Returns:
+        pandas dataframe with top blast results
+    """
+
+    remotedbs = ['nr','refseq_protein','pdb','swissprot']
+    res = []
+    if labels is None:
+        labels = seqs
+    recs=[]
+
+    for seq, name in zip(seqs,labels):
+        if type(seq) is not SeqRecord:
+            rec = SeqRecord(Seq(seq),id=name)
+        else:
+            rec = seq
+            name = seq.id
+        recs.append(rec)
+    SeqIO.write(recs, 'tempseq.fa', "fasta")
+    if database in remotedbs:
+        remote_blast(database, 'tempseq.fa', **kwargs)
+    else:
+        local_blast(database, 'tempseq.fa', **kwargs)
+    df = get_blast_results(filename='tempseq_blast.txt')
+    #merge original seqs
+    queries = fasta_to_dataframe('tempseq.fa').reset_index()
+    df = df.merge(queries, left_on='qseqid', right_on='name', how='left')
+    return df
 
 def clustal_alignment(filename=None, seqs=None, command="clustalw"):
     """Align 2 sequences with clustal"""

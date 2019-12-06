@@ -79,7 +79,7 @@ def make_blast_database(filenames):
     SeqIO.write(rec, 'scaffolds.fasta', 'fasta')
     cmd = 'makeblastdb -dbtype nucl -in scaffolds.fasta'
 
-def get_card_hits(res, gene):
+def find_hits(res, gene, db='card'):
     """get blast hit results"""
 
     x = res[res.gene==gene]
