@@ -1,0 +1,31 @@
+name: pyamrfinder
+version: 'latest'
+version-script: git describe --abbrev=1 --tags
+summary: amr gene finder
+description: |
+  pyamrfinder is an open source desktop application
+
+grade: stable
+confinement: strict
+icon: snap/gui/icon.png
+
+apps:
+  pyamrfinder:
+    command: desktop-launch $SNAP/bin/pyamrfinder
+    plugs: [desktop,desktop-legacy,unity7,home]
+
+parts:
+  pyamrfinder:
+    plugin: python
+    python-version: python3
+    source: ../
+    stage-packages:
+      [python3-tk,xsel,fontconfig-config,fonts-freefont-ttf,ttf-ubuntu-font-family,
+      fonts-liberation,ttf-dejavu-core,ttf-mscorefonts-installer]
+    after: [desktop-glib-only]
+
+  files: #to deal with problem finding init.tcl
+    plugin: dump
+    source: /usr/share/tcltk/
+    organize:
+         '*': ./usr/lib/

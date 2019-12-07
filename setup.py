@@ -19,8 +19,8 @@ setup(
                  },
     install_requires=['numpy>=1.10',
                       'pandas>=0.24',
+                      'matplotlib>=3.0',
                       'biopython>=1.5',
-                      'pyfaidx>0.5',
                       'future'],
     entry_points = {
         'console_scripts': [

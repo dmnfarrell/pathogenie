@@ -25,6 +25,7 @@ import sys,os,subprocess,glob
 import urllib
 import pandas as pd
 import numpy as np
+import pylab as plt
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
@@ -40,55 +41,69 @@ def fetch_sequence_db(name='card'):
     path = datadir
     if name == 'card':
         url = 'https://github.com/tseemann/abricate/raw/master/db/card/sequences'
+    elif name == 'resfinder':
+        url = 'https://raw.githubusercontent.com/tseemann/abricate/master/db/resfinder/sequences'
     filename = os.path.join(path,"%s.fa" %name)
     if not os.path.exists(filename):
         urllib.request.urlretrieve(url, filename)
     return
 
-def blast_card(ident=90,coverage=.75):
+def make_blast_database(filenames):
+    """Make blast dbs of multiple input files"""
+
+    rec=[]
+    for n in filenames:
+        seqs = list(SeqIO.parse(n,'fasta'))
+        for s in seqs:
+            s.id = n + '~' + s.id
+        rec.extend(seqs)
+    #ref = list(SeqIO.parse('genomes/ecoli_k12.fa','fasta'))
+    #ref[0].id = 'ecoli_k12~1'
+    #rec.extend(ref)
+    SeqIO.write(rec, 'out.fasta', 'fasta')
+    cmd = 'makeblastdb -dbtype nucl -in out.fasta'
+    subprocess.check_output(cmd, shell=True)
+    return
+
+def run_blast(target, ref='card', ident=90, coverage=.75):
     """blast card seqs"""
 
-    cardseqs = list(SeqIO.parse('/local/abricate/db/card/sequences','fasta'))
-    #bl = tools.local_blast(qfile, 'scaffolds.fasta', ident=ident, params='-e 10 -a 2 -S 1')
-    bl = tools.blast_sequences('scaffolds.fasta',cardseqs,maxseqs=100,evalue=.1,cmd='blastn',show_cmd=True)
-    print (bl[:5])
+    path = os.path.join(datadir,'%s.fa' %ref)
+    dbseqs = list(SeqIO.parse(path,'fasta'))
+    print ('blasting %s sequences' %len(dbseqs))
+    bl = tools.blast_sequences(target, dbseqs, maxseqs=100, evalue=.1,
+                               cmd='blastn', show_cmd=True)
+    #print (bl[:5])
     bl['qlength'] = bl.sequence.str.len()
     bl['coverage'] = bl.length/bl.qlength
     bl = bl[bl.coverage>coverage]
     bl = bl[bl.pident>ident]
-    bl['id'] = bl.sseqid.apply(lambda x: x.split('~')[0],1)
+    bl['filename'] = bl.sseqid.apply(lambda x: x.split('~')[0],1)
+    bl['id'] = bl.filename.apply(lambda x: os.path.basename(x),1)
     bl['contig'] = bl.sseqid.apply(lambda x: x.split('~')[1],1)
     bl['gene'] = bl['qseqid'].apply(lambda x: x.split('~~~')[1],1)
     #print (bl)
-    cols = ['qseqid','sseqid','pident','sstart','send','coverage','contig','gene','id']
+    cols = ['qseqid','pident','sstart','send','coverage','contig','gene','id','filename']
     bl = bl[cols]
     return bl
 
-def make_blast_database(filenames):
-    """make blast dbs"""
+def find_gene_hits(res, gene, filename, db='card'):
+    """Get blast hit results"""
 
-    rec=[]
-    for n in pig:
-        seqs = list(SeqIO.parse('scaffolds/%s.fa' %n,'fasta'))
-        for s in seqs:
-            s.id = n + '~' + s.id
-        rec.extend(seqs)
-    ref = list(SeqIO.parse('genomes/ecoli_k12.fa','fasta'))
-    ref[0].id = 'ecoli_k12~1'
-    rec.extend(ref)
-    SeqIO.write(rec, 'scaffolds.fasta', 'fasta')
-    cmd = 'makeblastdb -dbtype nucl -in scaffolds.fasta'
-
-def find_hits(res, gene, db='card'):
-    """get blast hit results"""
-
+    path = os.path.join(datadir,'%s.fa' %db)
+    #dbseqs = SeqIO.to_dict(SeqIO.parse(path,'fasta'))
+    dbseqs = tools.fasta_to_dataframe(path)
+    dbseqs['gene'] = dbseqs.description.apply(lambda x: x.split('~~~')[1],1)
+    #print (dbseqs)
     x = res[res.gene==gene]
+
     found=[]
-    nodes=[]
+    contigs = []
     for i,r in x.iterrows():
-        name=r.id
-        if name not in isolates: continue
-        seqs = SeqIO.to_dict(SeqIO.parse('scaffolds/%s.fa' %r.id,'fasta'))
+        name = r.id
+        print (name)
+        #if name not in isolates: continue
+        seqs = SeqIO.to_dict(SeqIO.parse(r.filename,'fasta'))
         node = r.contig
         if r.sstart<r.send:
             s = seqs[node].seq[r.sstart:r.send]
@@ -99,18 +114,49 @@ def find_hits(res, gene, db='card'):
         found.append(s)
         print (name, r.gene, r['coverage'], r['pident'], len(s), node)
         #add card seq
-        nodes.append(seqs[node])
+        contigs.append(seqs[node])
 
-    found.append(cardseqs[gene])
-    seqfile = 'card_%s.fa' %gene
-    SeqIO.write(found,seqfile,'fasta')
-    SeqIO.write(nodes,'ctx-contigs.fa','fasta')
+    row = dbseqs[dbseqs.gene==gene].iloc[0]
+    print (row)
+    found.append(SeqRecord(id=row['name'],seq=Seq(row.sequence)))
+    seqfile = 'temp.fa'
+    SeqIO.write(found, seqfile,'fasta')
+    SeqIO.write(contigs,'contigs.fa','fasta')
     #maaft_alignment(seqfile)
-    tools.clustal_alignment(seqfile)
+    aln = tools.clustal_alignment(seqfile)
+    print (aln)
+    return
 
-def run(filename):
-    fetch_sequence_db()
+def pivot_blast_results(bl):
+    x = bl.drop_duplicates(['sstart'])
+    m = pd.pivot_table(x, index='id', columns='gene', values='pident', aggfunc=np.size)
+    #m = m[m.columns[m.loc['ecoli_k12'].isnull()]]
+    #m = m.drop('ecoli_k12')
+    return m
 
+def plot_heatmap(m):
+    f,ax=plt.subplots(figsize=(15,8))
+    im = ax.imshow(m)
+    ax.set_xticks(np.arange(len(m.T)))
+    ax.set_yticks(np.arange(len(m)))
+    ax.set_xticklabels(m.columns)
+    ax.set_yticklabels(m.index)
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+         rotation_mode="anchor")
+    return
+
+def run(filenames=[], db='card', **kwargs):
+    """Run pipeline"""
+
+    fetch_sequence_db(db)
+    make_blast_database(filenames)
+    bl = run_blast('out.fasta', db)
+    #find_gene_hits(bl, 'dfrA1_9', '../test_files/RF15B.fa', db)
+    bl.to_csv('%s_results.csv' %db)
+    m = pivot_blast_results(bl)
+    print (m)
+    plot_heatmap(m)
+    m.to_csv('%s_matrix.csv' %db)
     return
 
 def main():
@@ -120,9 +166,20 @@ def main():
     from argparse import ArgumentParser
     parser = ArgumentParser(description='AMRfinder tool')
 
-    parser.add_argument("-f", "--fasta", dest="filename",
+    parser.add_argument("-f", "--fasta", dest="filenames", nargs='*',
                         help="input fasta file", metavar="FILE")
+    parser.add_argument("-p", "--path", dest="path",
+                        help="input fasta file", metavar="FILE")
+    parser.add_argument("-d", "--db", dest="db", default='card',
+                        help="input fasta file")
+    parser.add_argument("-i", "--ident", dest="identity", default='card',
+                        help="identity threshold")
+
     args = vars(parser.parse_args())
+    if args['path'] != None:
+        args['filenames'] = glob.glob(os.path.join(args['path'],'*.fa*'))
+    if len(args['filenames']) == 0:
+        return
     run(**args)
 
 if __name__ == '__main__':
