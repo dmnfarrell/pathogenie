@@ -324,7 +324,7 @@ def main():
                         help="input fasta file", metavar="FILE")
     args = vars(parser.parse_args())
 
-    app = AMRFinderApp()
+    app = guiAMRFinderApp()
     app.mainloop()
 
 if __name__ == '__main__':

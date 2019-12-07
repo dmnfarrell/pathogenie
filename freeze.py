@@ -7,11 +7,11 @@ sys.path.append('pyamrfinder')
 includes = ["pyamrfinder"]
 includefiles = ["pyamrfinder/logo.gif","pyamrfinder/data",
                 os.path.join(PYTHON_INSTALL_DIR, 'DLLs', 'tk86t.dll'),
-                os.path.join(PYTHON_INSTALL_DIR, 'DLLs', 'tcl86t.dll')
+                os.path.join(PYTHON_INSTALL_DIR, 'DLLs', 'tcl86t.dll'),                
                 ]
 
 # Dependencies are automatically detected, but it might need fine tuning.
-build_exe_options = {"packages": ["os","numpy","matplotlib",
+build_exe_options = {"packages": ["os","numpy","matplotlib","Bio",
                                   "pandas","pandastable",
                                   "pyamrfinder"],
                      "excludes": ['scipy','seaborn','statsmodels'],
@@ -33,6 +33,6 @@ executables = [Executable("main.py", base=base,
 
 setup(  name = "pyamrfinder",
 	version = "0.1.0",
-	description = "",
+	description = "amr gene finder",
     options = {"build_exe": build_exe_options},
     executables = executables)

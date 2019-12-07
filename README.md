@@ -20,3 +20,8 @@ possible database names:
 ## Links
     
 * [abricate by Torsten Seemann](https://github.com/tseemann/abricate)
+
+## Other requirements
+
+* ncbi-blast+ tools 
+* clustal
