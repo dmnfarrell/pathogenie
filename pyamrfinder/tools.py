@@ -138,7 +138,7 @@ def get_blast_results(filename):
 
     cols = ['qseqid','sseqid','qseq','sseq','pident','qcovs','length','mismatch','gapopen',
             'qstart','qend','sstart','send','evalue','bitscore','stitle']
-    res = pd.read_csv(filename, names=cols, sep='\t') 
+    res = pd.read_csv(filename, names=cols, sep='\t')
     return res
 
 def blast_sequences(database, seqs, labels=None, **kwargs):
@@ -536,48 +536,12 @@ def show_alignment(aln, diff=False, offset=0):
                 print (('%21s' %name), a.seq[start:end])
     return
 
-#ete tree routines
+def abricate(filename, db='card',id=None):
 
-def ete_draw(t,fname=None,title='',mode='r',outfile='ete_tree.png'):
-    from ete3 import Tree, TreeStyle, Phyloxml, TextFace
-    t.children
-    ts = TreeStyle()
-    #ts.branch_vertical_margin = 10
-    ts.show_scale=False
-    ts.scale =  800
-    ts.show_leaf_name = False
-    ts.mode = mode
-    ts.title.add_face(TextFace(title, fsize=14), column=0)
-    t.render(outfile,dpi=300,h=800,tree_style=ts)
-    return ts
-
-def ete_colors(tree, colors=None):
-    from ete3 import TreeStyle, TextFace, NodeStyle
-    for node in tree.traverse():
-        if node.name in colors:
-            #lbl = labels[node.name]
-            clr = colors[node.name]
-            #node.add_face(TextFace(node.name, fsize=14), column=0, position='branch-right')
-            #f2=TextFace(lbl)
-            #node.add_face(f2, column=1, position='aligned')
-            #f2.margin_left = 10
-            nstyle = NodeStyle()
-            nstyle["fgcolor"] = clr
-            nstyle["size"] = 15
-            node.set_style(nstyle)
-
-def ete_labels(tree, labels, column=1, position='aligned'):
-    from ete3 import TreeStyle, TextFace
-    for node in tree.traverse():
-        if node.name in labels:
-            lbl = labels[node.name]
-            f2=TextFace(lbl)
-            node.add_face(f2, column=column, position=position)
-            f2.margin_left = 10
-
-def get_ete_tree(filename):
-    from ete3 import Tree, Phyloxml
-    p = Phyloxml()
-    p.build_from_file(filename)
-    t = p.get_phylogeny()[0]
-    return t
+    cmd = '/local/abricate/bin/abricate %s -db %s --mincov 50 --minid 90 > temp.tab' %(filename,db)
+    print (cmd)
+    subprocess.check_output(cmd, shell=True, executable='/bin/bash')
+    df = pd.read_csv('temp.tab',sep='\t')
+    id = os.path.basename(filename)
+    df['id'] = id
+    return df

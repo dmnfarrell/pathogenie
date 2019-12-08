@@ -226,7 +226,7 @@ class AMRFinderApp(Frame):
         files = self.inputs.filename
         print ('running %s files' %len(files))
         app.make_blast_database(files)
-        bl = app.run_blast('out.fasta', db)
+        bl = app.find_genes('targets.fasta', db)
         bl.to_csv('%s_results.csv' %db)
         m = app.pivot_blast_results(bl)
         self.bl = bl
@@ -240,6 +240,10 @@ class AMRFinderApp(Frame):
         m.to_csv('%s_matrix.csv' %db)
         print ('done')
         self.load_results()
+        return
+
+    def init_figure():
+        self.axes=[]
         return
 
 ### utility methods

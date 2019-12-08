@@ -243,7 +243,7 @@ def addListBox(parent, values=[], width=10, height=6, label=''):
     yScroll = Scrollbar(frame, orient = VERTICAL)
     yScroll.grid(row = 1, column = 1, sticky = N+S)
     listItemSelected = lambda index: index
-    lbx = EasyListbox(frame, width, height, yScroll.set, listItemSelected)
+    lbx = Listbox(frame, width, height, yScroll.set, listItemSelected)
     lbx.grid(row = 1, column = 0, sticky = N+S+E+W)
     frame.columnconfigure(0, weight = 1)
     frame.rowconfigure(0, weight = 1)

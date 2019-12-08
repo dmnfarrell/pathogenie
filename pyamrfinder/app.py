@@ -40,10 +40,16 @@ def fetch_sequence_db(name='card'):
     """get sequences"""
 
     path = dbdir
-    if name == 'card':
-        url = 'https://github.com/tseemann/abricate/raw/master/db/card/sequences'
-    elif name == 'resfinder':
-        url = 'https://raw.githubusercontent.com/tseemann/abricate/master/db/resfinder/sequences'
+    links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequences',
+            'resfinder':'https://raw.githubusercontent.com/tseemann/abricate/master/db/resfinder/sequences',
+            'vfdb':'https://raw.githubusercontent.com/tseemann/abricate/master/db/vfdb/sequences'
+            }
+    if name in links:
+        url = links[name]
+    else:
+        print('no such name')
+        return
+
     filename = os.path.join(path,"%s.fa" %name)
     if not os.path.exists(filename):
         urllib.request.urlretrieve(url, filename)
@@ -61,13 +67,13 @@ def make_blast_database(filenames):
     #ref = list(SeqIO.parse('genomes/ecoli_k12.fa','fasta'))
     #ref[0].id = 'ecoli_k12~1'
     #rec.extend(ref)
-    SeqIO.write(rec, 'out.fasta', 'fasta')
-    cmd = 'makeblastdb -dbtype nucl -in out.fasta'
+    SeqIO.write(rec, 'targets.fasta', 'fasta')
+    cmd = 'makeblastdb -dbtype nucl -in targets.fasta'
     subprocess.check_output(cmd, shell=True)
     return
 
-def run_blast(target, ref='card', ident=90, coverage=75):
-    """blast card seqs"""
+def find_genes(target, ref='card', ident=90, coverage=75):
+    """Find ref genes by blasting the target sequences"""
 
     path = os.path.join(dbdir,'%s.fa' %ref)
     dbseqs = list(SeqIO.parse(path,'fasta'))
@@ -83,12 +89,14 @@ def run_blast(target, ref='card', ident=90, coverage=75):
     bl['id'] = bl.filename.apply(lambda x: os.path.basename(x),1)
     bl['contig'] = bl.sseqid.apply(lambda x: x.split('~')[1],1)
     bl['gene'] = bl['qseqid'].apply(lambda x: x.split('~~~')[1],1)
+    
+    bl = bl.sort_values('coverage', ascending=False).drop_duplicates(['sstart','send'])
     #print (bl)
     cols = ['qseqid','pident','sstart','send','coverage','contig','gene','id','filename']
     bl = bl[cols]
     return bl
 
-def find_gene_hits(res, gene, filename, db='card'):
+def get_gene_hits(res, gene, filename, db='card'):
     """Get blast hit results"""
 
     path = os.path.join(dbdir,'%s.fa' %db)
@@ -125,7 +133,7 @@ def find_gene_hits(res, gene, filename, db='card'):
     SeqIO.write(contigs,'contigs.fa','fasta')
     #maaft_alignment(seqfile)
     aln = tools.clustal_alignment(seqfile)
-    print (aln)
+    tools.show_alignment(aln)
     return
 
 def pivot_blast_results(bl):
@@ -154,7 +162,7 @@ def run(filenames=[], db='card', **kwargs):
 
     fetch_sequence_db(db)
     make_blast_database(filenames)
-    bl = run_blast('out.fasta', db)
+    bl = find_genes('out.fasta', db)
     #find_gene_hits(bl, 'dfrA1_9', '../test_files/RF15B.fa', db)
     bl.to_csv('%s_results.csv' %db)
     m = pivot_blast_results(bl)
