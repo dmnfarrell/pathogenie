@@ -5,23 +5,26 @@ summary: amr gene finder
 description: |
   pyamrfinder is an open source desktop application
 
+base: core18
 grade: stable
 confinement: strict
-icon: snap/gui/icon.png
+icon: gui/icon.png
 
 apps:
   pyamrfinder:
     command: desktop-launch $SNAP/bin/pyamrfinder
     plugs: [desktop,desktop-legacy,unity7,home]
-
+    environment:
+      LD_LIBRARY_PATH: $SNAP/usr/lib/ncbi-blast+  
 parts:
   pyamrfinder:
     plugin: python
     python-version: python3
     source: ../
     stage-packages:
-      [python3-tk,xsel,fontconfig-config,fonts-freefont-ttf,ttf-ubuntu-font-family,
-      fonts-liberation,ttf-dejavu-core,ttf-mscorefonts-installer]
+      [python3-tk,xsel,ncbi-blast+,clustal,
+      fontconfig-config,fonts-freefont-ttf,ttf-ubuntu-font-family,
+      fonts-liberation]
     after: [desktop-glib-only]
 
   files: #to deal with problem finding init.tcl

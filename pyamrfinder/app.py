@@ -34,11 +34,12 @@ from . import tools
 home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'data')
+dbdir = os.path.join(module_path, 'db')
 
 def fetch_sequence_db(name='card'):
     """get sequences"""
 
-    path = datadir
+    path = dbdir
     if name == 'card':
         url = 'https://github.com/tseemann/abricate/raw/master/db/card/sequences'
     elif name == 'resfinder':
@@ -65,17 +66,17 @@ def make_blast_database(filenames):
     subprocess.check_output(cmd, shell=True)
     return
 
-def run_blast(target, ref='card', ident=90, coverage=.75):
+def run_blast(target, ref='card', ident=90, coverage=75):
     """blast card seqs"""
 
-    path = os.path.join(datadir,'%s.fa' %ref)
+    path = os.path.join(dbdir,'%s.fa' %ref)
     dbseqs = list(SeqIO.parse(path,'fasta'))
     print ('blasting %s sequences' %len(dbseqs))
     bl = tools.blast_sequences(target, dbseqs, maxseqs=100, evalue=.1,
                                cmd='blastn', show_cmd=True)
     #print (bl[:5])
     bl['qlength'] = bl.sequence.str.len()
-    bl['coverage'] = bl.length/bl.qlength
+    bl['coverage'] = bl.length/bl.qlength*100
     bl = bl[bl.coverage>coverage]
     bl = bl[bl.pident>ident]
     bl['filename'] = bl.sseqid.apply(lambda x: x.split('~')[0],1)
@@ -90,7 +91,7 @@ def run_blast(target, ref='card', ident=90, coverage=.75):
 def find_gene_hits(res, gene, filename, db='card'):
     """Get blast hit results"""
 
-    path = os.path.join(datadir,'%s.fa' %db)
+    path = os.path.join(dbdir,'%s.fa' %db)
     #dbseqs = SeqIO.to_dict(SeqIO.parse(path,'fasta'))
     dbseqs = tools.fasta_to_dataframe(path)
     dbseqs['gene'] = dbseqs.description.apply(lambda x: x.split('~~~')[1],1)
@@ -129,13 +130,16 @@ def find_gene_hits(res, gene, filename, db='card'):
 
 def pivot_blast_results(bl):
     x = bl.drop_duplicates(['sstart'])
-    m = pd.pivot_table(x, index='id', columns='gene', values='pident', aggfunc=np.size)
+    m = pd.pivot_table(x, index='id', columns='gene', values='pident')#, aggfunc=np.size)
     #m = m[m.columns[m.loc['ecoli_k12'].isnull()]]
     #m = m.drop('ecoli_k12')
     return m
 
-def plot_heatmap(m):
-    f,ax=plt.subplots(figsize=(15,8))
+def plot_heatmap(m, ax=None):
+
+    np.array_split(m, 3)
+    if ax == None:
+        f,ax=plt.subplots(figsize=(15,8))
     im = ax.imshow(m)
     ax.set_xticks(np.arange(len(m.T)))
     ax.set_yticks(np.arange(len(m)))

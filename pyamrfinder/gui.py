@@ -41,18 +41,12 @@ matplotlib.use('TkAgg', warn=False)
 import pandas as pd
 import numpy as np
 from pandastable import Table
-from . import tools, app, images
+from . import tools, app, images, dialogs
 
 home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'data')
 
-def get_parent_geometry(parent):
-    x = parent.winfo_rootx()
-    y = parent.winfo_rooty()
-    w = parent.winfo_width()
-    h = parent.winfo_height()
-    return x,y,w,h
 
 class AMRFinderApp(Frame):
     """Application using tkinter widgets.
@@ -60,7 +54,7 @@ class AMRFinderApp(Frame):
             parent: parent tkinter Frame, default None
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, filenames=[]):
         """Initialize the application. """
 
         self.parent=parent
@@ -78,10 +72,11 @@ class AMRFinderApp(Frame):
         self.main.title('pyAMRfinder')
         self.create_menu_bar()
         self.setup_gui()
-        self.filenames = []
+        self.filenames = filenames
         self.inputs = []
         self.main.protocol('WM_DELETE_WINDOW',self.quit)
         self.main.lift()
+        self.load_fasta_table()
         return
 
     def setup_gui(self):
@@ -89,30 +84,59 @@ class AMRFinderApp(Frame):
 
         self.m = PanedWindow(self.main, orient=HORIZONTAL)
         self.m.pack(fill=BOTH,expand=1)
-        tables = PanedWindow(self.main, orient=VERTICAL)
-        f1 = Frame(tables)
-        tables.add(f1)
+        fr = self.options_frame()
+        self.m.add(fr)
+
+        left = PanedWindow(self.main, orient=VERTICAL)
+        #top table
+        f1 = Frame(left)
+        left.add(f1)
         t = self.fasta_table = Table(f1, dafaframe=None, showtoolbar=0, showstatusbar=1, editable=False)
         t.model.df = pd.DataFrame()
         t.show()
-        f2 = Frame(tables)
+
+        #bottom table
+        self.nb = Notebook(self.main)
+        f2 = Frame()
         t = self.results_table = Table(f2, showtoolbar=0, showstatusbar=1, height=600)
         t.model.df = pd.DataFrame()
-        tables.add(f2)
         t.show()
-        self.m.add(tables)
-        self.st = self.text = ScrolledText(self.main, bg='white', fg='black')
-        self.m.add(self.st)
+        self.nb.add(f2, text='results')
+        f3 = Frame()
+        t = self.matrix_table = Table(f3, showtoolbar=0, showstatusbar=1, height=600)
+        t.model.df = pd.DataFrame()
+        t.show()
+        self.nb.add(f3, text='matrix')
+
+        left.add(self.nb)
+        self.m.add(left)
+
+        #right panedwindow
+        right = PanedWindow(self.main, orient=VERTICAL)
+        self.st = self.text = ScrolledText(right, bg='white', fg='black')
+        right.add(self.st)
+        self.plotfr = Frame(right)
+        self.fig, self.canvas = dialogs.addFigure(self.plotfr)
+        self.ax = self.fig.add_subplot(111)
+        right.add(self.plotfr)
+        self.m.add(right)
         self.set_geometry()
         return
+
+    def options_frame(self):
+
+        f = Frame(self.main)
+        self.opts = AppOptions(parent=self)
+        w = self.opts.showDialog(self.main, layout='vertical')
+        return w
 
     def create_menu_bar(self):
         """Create the menu bar for the application. """
 
         self.menu = Menu(self.main)
         file_menu = Menu(self.menu,tearoff=0)
-        filemenuitems = {'01New Project':{'cmd': self.new_project},
-                    '02Load Fasta':{'cmd': lambda: self.load_fasta_files()},
+        filemenuitems = {'01Load Fasta':{'cmd': lambda: self.load_fasta_files()},
+                         '02Load Test Files':{'cmd': lambda: self.load_test()},
                     '04sep':'',
                     '06Quit':{'cmd':self.quit}}
         self.file_menu = self.create_pulldown(self.menu, filemenuitems, var=file_menu)
@@ -131,61 +155,91 @@ class AMRFinderApp(Frame):
         self.main.config(menu=self.menu)
         return
 
-    def new_project(self):
+    def read_file_info(self):
+
         return
 
-    def close_project(self):
+    def load_test(self):
+        """Load test_files"""
+
+        files = glob.glob(os.path.join(datadir, '*.fa'))
+        self.filenames = files
+        self.load_fasta_table()
         return
 
     def load_fasta_files(self):
         """Load fasta files"""
+
         filenames = filedialog.askopenfilenames(defaultextension='.dexpl"',
                                                 initialdir=os.getcwd(),
                                                 filetypes=[("fasta","*.fa"),("fasta","*.fasta"),
+                                                           ("fasta","*.fna"),
                                                            ("All files","*.*")],
                                                 parent=self.main)
         if not filenames:
             return
         self.filenames = filenames
-        self.inputs = pd.DataFrame({'name':self.filenames})
         self.load_fasta_table()
         return
 
+    def load_fasta_table(self):
+        """Load fasta inputs into table"""
+
+        if self.filenames is None or len(self.filenames) == 0:
+            return
+        names = [os.path.basename(i) for i in self.filenames]
+        self.inputs = pd.DataFrame({'label':names,'filename':self.filenames})
+        pt = self.fasta_table
+        pt.model.df = self.inputs
+        pt.adjustColumnWidths()
+        pt.redraw()
+        return
+
+    def load_results(self):
+        #print (self.bl)
+        self.results_table.model.df = self.bl
+        self.results_table.redraw()
+        return
+
     def write(self, string):
-        """"""
+        """for stdout redirect to scrolledtext"""
+
         self.st.insert(END, string)
 
+    def flush(self, string):
+        return
+
     def run(self):
+        """Run pipeline"""
 
         sys.stdout = self
         #app.run(self.filenames, 'card')
         if len(self.inputs) == 0:
             print('you need to load fasta files')
             return
-        db='card'
+        self.opts.applyOptions()
+        print (self.opts.kwds)
+        db = self.opts.kwds['db']
         app.fetch_sequence_db(db)
-        app.make_blast_database(self.filenames)
+        #update inputs from table
+        self.inputs = self.fasta_table.model.df
+        files = self.inputs.filename
+        print ('running %s files' %len(files))
+        app.make_blast_database(files)
         bl = app.run_blast('out.fasta', db)
         bl.to_csv('%s_results.csv' %db)
         m = app.pivot_blast_results(bl)
         self.bl = bl
         print (m)
-        app.plot_heatmap(m)
+        app.plot_heatmap(m, ax=self.ax)
+        self.canvas.draw()
+        t=self.matrix_table
+        t.model.df = m.T.reset_index()
+        t.redraw()
+        t.setWrap()
         m.to_csv('%s_matrix.csv' %db)
         print ('done')
-        self.load_table()
-        return
-
-    def load_fasta_table(self):
-
-        self.fasta_table.model.df = self.inputs
-        self.fasta_table.redraw()
-        return
-
-    def load_table(self):
-        print (self.bl)
-        self.results_table.model.df = self.bl
-        self.results_table.redraw()
+        self.load_results()
         return
 
 ### utility methods
@@ -269,7 +323,7 @@ class AMRFinderApp(Frame):
         """About dialog"""
 
         abwin = Toplevel()
-        x,y,w,h = get_parent_geometry(self.main)
+        x,y,w,h = dialogs.get_parent_geometry(self.main)
         abwin.geometry('+%d+%d' %(x+w/2-200,y+h/2-200))
         abwin.title('About')
         abwin.transient(self)
@@ -314,17 +368,30 @@ class AMRFinderApp(Frame):
         webbrowser.open(link,autoraise=1)
         return
 
+class AppOptions(dialogs.TkOptions):
+    """Class for provinding options"""
+    def __init__(self, parent=None):
+        """Setup variables"""
+
+        self.parent = parent
+        dbs = ['card','resfinder','arg-annot','vfdb']
+        self.groups = {'options':['db']}
+        self.opts = {'db':{'type':'combobox','default':'card',
+                    'items':dbs,
+                    'label':'database'},}
+        return
+
 def main():
     "Run the application"
 
     import sys, os
     from argparse import ArgumentParser
     parser = ArgumentParser(description='AMRfinder tool')
-    parser.add_argument("-f", "--fasta", dest="filename",
+    parser.add_argument("-f", "--fasta", dest="filenames",default=[],
                         help="input fasta file", metavar="FILE")
     args = vars(parser.parse_args())
 
-    app = guiAMRFinderApp()
+    app = AMRFinderApp(filenames=args['filenames'])
     app.mainloop()
 
 if __name__ == '__main__':

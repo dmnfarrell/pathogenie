@@ -7,7 +7,7 @@ This is a Python package for detecting antibiotic resistance genes in nucleotide
 
 ## Usage
 
-pyamrfinder -p <path> -f <filenames> -d <database>
+```pyamrfinder -p <path> -d <database>```
 
 This program utilises the sequence databases compiled by abricate.
     
