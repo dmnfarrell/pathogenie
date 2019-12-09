@@ -32,20 +32,36 @@ from Bio import SeqIO
 from . import tools
 
 home = os.path.expanduser("~")
+config_path = os.path.join(home,'.config/pyamrfinder')
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'data')
-dbdir = os.path.join(module_path, 'db')
+dbdir = os.path.join(config_path, 'db')
+if not os.path.exists(config_path):
+    try:
+        os.makedirs(config_path, exist_ok=True)
+    except:
+        os.makedirs(config_path)
+
+db_names = ['card','resfinder','argannot','ncbi','plasmidfinder','ecoh','vfdb']
+
+def check_databases():
+    """download databases"""
+
+    print ('checking databases')
+    for name in db_names:
+        fetch_sequence_db(name)
+    return
 
 def fetch_sequence_db(name='card'):
-    """get sequences"""
+    """
+    Get updated sequences from abricate github repo.
+    Download new dbs to config folder.
+    """
 
     path = dbdir
-    links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequences',
-            'resfinder':'https://raw.githubusercontent.com/tseemann/abricate/master/db/resfinder/sequences',
-            'vfdb':'https://raw.githubusercontent.com/tseemann/abricate/master/db/vfdb/sequences'
-            }
-    if name in links:
-        url = links[name]
+
+    if name in db_names:
+        url = 'https://raw.githubusercontent.com/tseemann/abricate/master/db/%s/sequences' %name
     else:
         print('no such name')
         return
@@ -89,7 +105,7 @@ def find_genes(target, ref='card', ident=90, coverage=75):
     bl['id'] = bl.filename.apply(lambda x: os.path.basename(x),1)
     bl['contig'] = bl.sseqid.apply(lambda x: x.split('~')[1],1)
     bl['gene'] = bl['qseqid'].apply(lambda x: x.split('~~~')[1],1)
-    
+
     bl = bl.sort_values('coverage', ascending=False).drop_duplicates(['sstart','send'])
     #print (bl)
     cols = ['qseqid','pident','sstart','send','coverage','contig','gene','id','filename']
@@ -143,32 +159,44 @@ def pivot_blast_results(bl):
     #m = m.drop('ecoli_k12')
     return m
 
-def plot_heatmap(m, ax=None):
+def plot_heatmap(m, fig=None):
 
-    np.array_split(m, 3)
-    if ax == None:
-        f,ax=plt.subplots(figsize=(15,8))
-    im = ax.imshow(m)
-    ax.set_xticks(np.arange(len(m.T)))
-    ax.set_yticks(np.arange(len(m)))
-    ax.set_xticklabels(m.columns)
-    ax.set_yticklabels(m.index)
-    plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
-         rotation_mode="anchor")
-    return
-
+    from matplotlib.gridspec import GridSpec
+    l=3
+    if fig == None:
+        fig = plt.figure()
+    gs = fig.add_gridspec(1, l)
+    chunks = np.array_split(m,l)
+    i=0
+    for df in chunks:
+        ax = fig.add_subplot(gs[0,i])
+        im = ax.imshow(df)
+        ax.set_xticks(np.arange(len(df.T)))
+        ax.set_yticks(np.arange(len(df)))
+        ax.set_xticklabels(df.columns)
+        ax.set_yticklabels(df.index)
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+                 rotation_mode="anchor")
+        i+=1
+    plt.tight_layout()
+    return 
 def run(filenames=[], db='card', **kwargs):
     """Run pipeline"""
 
-    fetch_sequence_db(db)
+    check_databases()
     make_blast_database(filenames)
-    bl = find_genes('out.fasta', db)
+    bl = find_genes('targets.fasta', db)
     #find_gene_hits(bl, 'dfrA1_9', '../test_files/RF15B.fa', db)
     bl.to_csv('%s_results.csv' %db)
     m = pivot_blast_results(bl)
     print (m)
     plot_heatmap(m)
     m.to_csv('%s_matrix.csv' %db)
+    return
+
+def run_test():
+    files = glob.glob(os.path.join(datadir, '*.fa'))
+    run(files)
     return
 
 def main():
@@ -186,8 +214,13 @@ def main():
                         help="input fasta file")
     parser.add_argument("-i", "--ident", dest="identity", default='card',
                         help="identity threshold")
+    parser.add_argument("-t", "--test", dest="test", action='store_true',
+                        help="test run")
 
     args = vars(parser.parse_args())
+    if args['test'] == True:
+        run_test()
+        return
     if args['path'] != None:
         args['filenames'] = glob.glob(os.path.join(args['path'],'*.fa*'))
     if len(args['filenames']) == 0:

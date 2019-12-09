@@ -19,6 +19,7 @@ setup(
                  },
     install_requires=['numpy>=1.10',
                       'pandas>=0.24',
+                      'pandastable>=0.12.0',
                       'matplotlib>=3.0',
                       'biopython>=1.5',
                       'future'],

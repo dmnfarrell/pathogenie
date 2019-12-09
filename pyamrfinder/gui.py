@@ -22,6 +22,7 @@
 
 from __future__ import absolute_import, print_function
 import sys,os,subprocess,glob,platform
+import threading
 try:
     from tkinter import *
     from tkinter.ttk import *
@@ -45,7 +46,6 @@ from . import tools, app, images, dialogs
 
 home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
-datadir = os.path.join(module_path, 'data')
 
 
 class AMRFinderApp(Frame):
@@ -84,6 +84,7 @@ class AMRFinderApp(Frame):
 
         self.m = PanedWindow(self.main, orient=HORIZONTAL)
         self.m.pack(fill=BOTH,expand=1)
+
         fr = self.options_frame()
         self.m.add(fr)
 
@@ -91,19 +92,21 @@ class AMRFinderApp(Frame):
         #top table
         f1 = Frame(left)
         left.add(f1)
-        t = self.fasta_table = Table(f1, dafaframe=None, showtoolbar=0, showstatusbar=1, editable=False)
+        t = self.fasta_table = Table(f1, dafaframe=None, showtoolbar=0, showstatusbar=1)
         t.model.df = pd.DataFrame()
         t.show()
 
         #bottom table
         self.nb = Notebook(self.main)
         f2 = Frame()
-        t = self.results_table = Table(f2, showtoolbar=0, showstatusbar=1, height=600)
+        t = self.results_table = Table(f2, showtoolbar=0, showstatusbar=1,
+                                        editable=False, height=600)
         t.model.df = pd.DataFrame()
         t.show()
         self.nb.add(f2, text='results')
         f3 = Frame()
-        t = self.matrix_table = Table(f3, showtoolbar=0, showstatusbar=1, height=600)
+        t = self.matrix_table = Table(f3, showtoolbar=0, showstatusbar=1,
+                                        editable=False, height=600)
         t.model.df = pd.DataFrame()
         t.show()
         self.nb.add(f3, text='matrix')
@@ -162,7 +165,7 @@ class AMRFinderApp(Frame):
     def load_test(self):
         """Load test_files"""
 
-        files = glob.glob(os.path.join(datadir, '*.fa'))
+        files = glob.glob(os.path.join(app.datadir, '*.fa'))
         self.filenames = files
         self.load_fasta_table()
         return
@@ -226,12 +229,14 @@ class AMRFinderApp(Frame):
         files = self.inputs.filename
         print ('running %s files' %len(files))
         app.make_blast_database(files)
+
         bl = app.find_genes('targets.fasta', db)
         bl.to_csv('%s_results.csv' %db)
         m = app.pivot_blast_results(bl)
         self.bl = bl
         print (m)
-        app.plot_heatmap(m, ax=self.ax)
+        self.fig.clear()
+        app.plot_heatmap(m.T, fig=self.fig)
         self.canvas.draw()
         t=self.matrix_table
         t.model.df = m.T.reset_index()
@@ -378,11 +383,13 @@ class AppOptions(dialogs.TkOptions):
         """Setup variables"""
 
         self.parent = parent
-        dbs = ['card','resfinder','arg-annot','vfdb']
-        self.groups = {'options':['db']}
+        dbs = app.db_names
+        self.groups = {'options':['db','identity','coverage']}
         self.opts = {'db':{'type':'combobox','default':'card',
-                    'items':dbs,
-                    'label':'database'},}
+                    'items':dbs,'label':'database'},
+                    'identity':{'type':'entry','default':90},
+                    'coverage':{'type':'entry','default':50}
+                    }
         return
 
 def main():
