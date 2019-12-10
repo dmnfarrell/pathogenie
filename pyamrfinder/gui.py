@@ -99,13 +99,13 @@ class AMRFinderApp(Frame):
         #bottom table
         self.nb = Notebook(self.main)
         f2 = Frame()
-        t = self.results_table = Table(f2, showtoolbar=0, showstatusbar=1,
+        t = self.results_table = dialogs.MyTable(f2, app=self, showtoolbar=0, showstatusbar=1,
                                         editable=False, height=600)
         t.model.df = pd.DataFrame()
         t.show()
         self.nb.add(f2, text='results')
         f3 = Frame()
-        t = self.matrix_table = Table(f3, showtoolbar=0, showstatusbar=1,
+        t = self.matrix_table = dialogs.MyTable(f3, app=self, showtoolbar=0, showstatusbar=1,
                                         editable=False, height=600)
         t.model.df = pd.DataFrame()
         t.show()
@@ -138,7 +138,7 @@ class AMRFinderApp(Frame):
 
         self.menu = Menu(self.main)
         file_menu = Menu(self.menu,tearoff=0)
-        filemenuitems = {'01Load Fasta':{'cmd': lambda: self.load_fasta_files()},
+        filemenuitems = {'01Load Fasta Files':{'cmd': lambda: self.load_fasta_files()},
                          '02Load Test Files':{'cmd': lambda: self.load_test()},
                     '04sep':'',
                     '06Quit':{'cmd':self.quit}}
@@ -146,7 +146,10 @@ class AMRFinderApp(Frame):
         self.menu.add_cascade(label='File',menu=self.file_menu['var'])
 
         analysis_menu = Menu(self.menu,tearoff=0)
-        analysismenuitems = {'01Run':{'cmd': self.run}}
+        analysismenuitems = {'01Run':{'cmd': self.run},
+                             '02Get sequences for gene':{'cmd': self.show_fasta_sequences},
+                             '03Show alignment for gene':{'cmd': self.show_gene_alignment},
+                            }
         self.analysis_menu = self.create_pulldown(self.menu, analysismenuitems, var=analysis_menu)
         self.menu.add_cascade(label='Analysis',menu=self.analysis_menu['var'])
 
@@ -167,6 +170,7 @@ class AMRFinderApp(Frame):
 
         files = glob.glob(os.path.join(app.datadir, '*.fa'))
         self.filenames = files
+        self.clear_results()
         self.load_fasta_table()
         return
 
@@ -183,6 +187,14 @@ class AMRFinderApp(Frame):
             return
         self.filenames = filenames
         self.load_fasta_table()
+        self.clear_results()
+        return
+
+    def clear_results(self):
+        self.results_table.model.df = pd.DataFrame()
+        self.results_table.redraw()
+        self.fig.clear()
+        self.canvas.draw()
         return
 
     def load_fasta_table(self):
@@ -190,7 +202,7 @@ class AMRFinderApp(Frame):
 
         if self.filenames is None or len(self.filenames) == 0:
             return
-        names = [os.path.basename(i) for i in self.filenames]
+        names = [os.path.splitext(os.path.basename(i))[0] for i in self.filenames]
         self.inputs = pd.DataFrame({'label':names,'filename':self.filenames})
         pt = self.fasta_table
         pt.model.df = self.inputs
@@ -208,6 +220,7 @@ class AMRFinderApp(Frame):
         """for stdout redirect to scrolledtext"""
 
         self.st.insert(END, string)
+        self.st.see(END)
 
     def flush(self, string):
         return
@@ -222,7 +235,9 @@ class AMRFinderApp(Frame):
             return
         self.opts.applyOptions()
         print (self.opts.kwds)
-        db = self.opts.kwds['db']
+        app.check_databases()
+        kwds = self.opts.kwds
+        db = kwds['db']        
         app.fetch_sequence_db(db)
         #update inputs from table
         self.inputs = self.fasta_table.model.df
@@ -230,13 +245,13 @@ class AMRFinderApp(Frame):
         print ('running %s files' %len(files))
         app.make_blast_database(files)
 
-        bl = app.find_genes('targets.fasta', db)
+        bl = app.find_genes('targets.fasta', db, **kwds)
         bl.to_csv('%s_results.csv' %db)
         m = app.pivot_blast_results(bl)
         self.bl = bl
         print (m)
         self.fig.clear()
-        app.plot_heatmap(m.T, fig=self.fig)
+        app.plot_heatmap(m.T, fig=self.fig, title='results matrix')
         self.canvas.draw()
         t=self.matrix_table
         t.model.df = m.T.reset_index()
@@ -247,8 +262,31 @@ class AMRFinderApp(Frame):
         self.load_results()
         return
 
-    def init_figure():
-        self.axes=[]
+    def get_selected_gene(self):
+
+        row = self.results_table.getSelectedRow()
+        data = self.bl.iloc[row]
+        gene = data.gene
+        return gene
+
+    def show_fasta_sequences(self):
+
+        files = self.inputs.filename
+        gene = self.get_selected_gene()
+        seqs = app.get_gene_hits(self.bl, gene, files, db='card')
+        print()
+        for s in seqs:
+            print(s.format("fasta"))
+        return
+
+    def show_gene_alignment(self):
+
+        files = self.inputs.filename
+        gene = self.get_selected_gene()
+        seqs = app.get_gene_hits(self.bl, gene, files, db='card')
+        #maaft_alignment(seqfile)
+        print ('alignments for gene: %s' %gene)
+        app.get_alignment(seqs)
         return
 
 ### utility methods
@@ -356,7 +394,7 @@ class AMRFinderApp(Frame):
 
         text='pyamrfinder GUI\n'\
                 +'version '+__version__+snap+'\n'\
-                +'Copyright (C) Damien Farrell 2014-\n'\
+                +'Copyright (C) Damien Farrell 2019-\n'\
                 +'This program is free software; you can redistribute it and/or\n'\
                 +'modify it under the terms of the GNU General Public License\n'\
                 +'as published by the Free Software Foundation; either version 3\n'\
@@ -384,11 +422,13 @@ class AppOptions(dialogs.TkOptions):
 
         self.parent = parent
         dbs = app.db_names
-        self.groups = {'options':['db','identity','coverage']}
+        self.groups = {'options':['db','identity','coverage','best hit']}
         self.opts = {'db':{'type':'combobox','default':'card',
                     'items':dbs,'label':'database'},
                     'identity':{'type':'entry','default':90},
-                    'coverage':{'type':'entry','default':50}
+                    'coverage':{'type':'entry','default':50},
+                    #'best hit':{'type':'checkbutton','default':True,
+                    #'label':'keep best hit only'}
                     }
         return
 

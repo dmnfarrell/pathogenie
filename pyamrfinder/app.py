@@ -48,7 +48,9 @@ def check_databases():
     """download databases"""
 
     print ('checking databases')
+    os.makedirs(dbdir, exist_ok=True)
     for name in db_names:
+        #print (name)
         fetch_sequence_db(name)
     return
 
@@ -88,7 +90,7 @@ def make_blast_database(filenames):
     subprocess.check_output(cmd, shell=True)
     return
 
-def find_genes(target, ref='card', ident=90, coverage=75):
+def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False, **kwargs):
     """Find ref genes by blasting the target sequences"""
 
     path = os.path.join(dbdir,'%s.fa' %ref)
@@ -96,7 +98,7 @@ def find_genes(target, ref='card', ident=90, coverage=75):
     print ('blasting %s sequences' %len(dbseqs))
     bl = tools.blast_sequences(target, dbseqs, maxseqs=100, evalue=.1,
                                cmd='blastn', show_cmd=True)
-    #print (bl[:5])
+
     bl['qlength'] = bl.sequence.str.len()
     bl['coverage'] = bl.length/bl.qlength*100
     bl = bl[bl.coverage>coverage]
@@ -106,9 +108,14 @@ def find_genes(target, ref='card', ident=90, coverage=75):
     bl['contig'] = bl.sseqid.apply(lambda x: x.split('~')[1],1)
     bl['gene'] = bl['qseqid'].apply(lambda x: x.split('~~~')[1],1)
 
-    bl = bl.sort_values('coverage', ascending=False).drop_duplicates(['sstart','send'])
-    #print (bl)
-    cols = ['qseqid','pident','sstart','send','coverage','contig','gene','id','filename']
+    #remove exact and close duplicates
+    bl = bl.sort_values(['coverage','pident'], ascending=False).drop_duplicates(['contig','sstart','send'])
+    if duplicates == False:
+        dist = 20
+        bl=bl.sort_values(by=["contig","sstart"])
+        unique = bl.sstart.diff().fillna(dist)
+        bl = bl[unique>=dist]
+    cols = ['gene','id','qseqid','pident','coverage','sstart','send','contig','filename']
     bl = bl[cols]
     return bl
 
@@ -126,7 +133,7 @@ def get_gene_hits(res, gene, filename, db='card'):
     contigs = []
     for i,r in x.iterrows():
         name = r.id
-        print (name)
+        #print (name)
         #if name not in isolates: continue
         seqs = SeqIO.to_dict(SeqIO.parse(r.filename,'fasta'))
         node = r.contig
@@ -137,32 +144,35 @@ def get_gene_hits(res, gene, filename, db='card'):
 
         s = SeqRecord(id=name,seq=s)
         found.append(s)
-        print (name, r.gene, r['coverage'], r['pident'], len(s), node)
+        #print (name, r.gene, r['coverage'], r['pident'], len(s), node)
         #add card seq
         contigs.append(seqs[node])
 
     row = dbseqs[dbseqs.gene==gene].iloc[0]
-    print (row)
     found.append(SeqRecord(id=row['name'],seq=Seq(row.sequence)))
-    seqfile = 'temp.fa'
-    SeqIO.write(found, seqfile,'fasta')
     SeqIO.write(contigs,'contigs.fa','fasta')
-    #maaft_alignment(seqfile)
+    return found
+
+def get_alignment(seqs):
+
+    seqfile = 'temp.fa'
+    SeqIO.write(seqs, seqfile,'fasta')
     aln = tools.clustal_alignment(seqfile)
     tools.show_alignment(aln)
-    return
+    return aln
 
 def pivot_blast_results(bl):
+
     x = bl.drop_duplicates(['sstart'])
     m = pd.pivot_table(x, index='id', columns='gene', values='pident')#, aggfunc=np.size)
     #m = m[m.columns[m.loc['ecoli_k12'].isnull()]]
     #m = m.drop('ecoli_k12')
     return m
 
-def plot_heatmap(m, fig=None):
+def plot_heatmap(m, fig=None, title=''):
 
     from matplotlib.gridspec import GridSpec
-    l=3
+    l=1+int(len(m)/30)
     if fig == None:
         fig = plt.figure()
     gs = fig.add_gridspec(1, l)
@@ -170,26 +180,27 @@ def plot_heatmap(m, fig=None):
     i=0
     for df in chunks:
         ax = fig.add_subplot(gs[0,i])
-        im = ax.imshow(df)
+        im = ax.imshow(df, cmap='Blues')
         ax.set_xticks(np.arange(len(df.T)))
         ax.set_yticks(np.arange(len(df)))
         ax.set_xticklabels(df.columns)
         ax.set_yticklabels(df.index)
-        plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+        plt.setp(ax.get_xticklabels(), rotation=90, ha="right",
                  rotation_mode="anchor")
         i+=1
-    plt.tight_layout()
-    return 
+    fig.suptitle(title)
+    fig.subplots_adjust(hspace=1.2, bottom=.2)
+    return
+
 def run(filenames=[], db='card', **kwargs):
     """Run pipeline"""
 
     check_databases()
     make_blast_database(filenames)
-    bl = find_genes('targets.fasta', db)
+    bl = find_genes('targets.fasta', db, **kwargs)
     #find_gene_hits(bl, 'dfrA1_9', '../test_files/RF15B.fa', db)
     bl.to_csv('%s_results.csv' %db)
     m = pivot_blast_results(bl)
-    print (m)
     plot_heatmap(m)
     m.to_csv('%s_matrix.csv' %db)
     return
