@@ -237,7 +237,7 @@ class AMRFinderApp(Frame):
         print (self.opts.kwds)
         app.check_databases()
         kwds = self.opts.kwds
-        db = kwds['db']        
+        db = kwds['db']
         app.fetch_sequence_db(db)
         #update inputs from table
         self.inputs = self.fasta_table.model.df
@@ -247,9 +247,10 @@ class AMRFinderApp(Frame):
 
         bl = app.find_genes('targets.fasta', db, **kwds)
         bl.to_csv('%s_results.csv' %db)
+        print ('found %s genes' %len(bl.gene.unique()))
         m = app.pivot_blast_results(bl)
         self.bl = bl
-        print (m)
+        #print (m)
         self.fig.clear()
         app.plot_heatmap(m.T, fig=self.fig, title='results matrix')
         self.canvas.draw()
@@ -422,7 +423,7 @@ class AppOptions(dialogs.TkOptions):
 
         self.parent = parent
         dbs = app.db_names
-        self.groups = {'options':['db','identity','coverage','best hit']}
+        self.groups = {'options':['db','identity','coverage']}
         self.opts = {'db':{'type':'combobox','default':'card',
                     'items':dbs,'label':'database'},
                     'identity':{'type':'entry','default':90},
