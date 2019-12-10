@@ -65,6 +65,19 @@ def getDictfromTkVars(opts, tkvars, widgets):
                 kwds[i] = tkvars[i].get()
     return kwds
 
+def addButton(frame, name, callback, img=None,
+              side=TOP, compound=None, width=None, padding=2):
+    """Add a button with image, toolip to a tkinter frame"""
+
+    if img==None:
+        b = Button(frame, text=name, command=callback)
+    else:
+        b = Button(frame, text=name, command=callback, width=width,
+                         image=img, compound=compound, padding=padding)
+    b.image = img
+    b.pack(side=side,fill=X,pady=padding)
+    return
+
 def dialogFromOptions(parent, opts, groups=None, callback=None,
                         sticky='news',  layout='horizontal'):
     """Auto create tk vars and widgets for corresponding options and

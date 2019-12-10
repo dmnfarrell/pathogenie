@@ -107,7 +107,7 @@ def run_blastn(database, query, params='-e .1 -G 10'):
     return
 
 def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
-                    compress=False, cmd='blastn', cpus=2, show_cmd=False, **kwargs):
+                    compress=False, cmd='blastn', threads=2, show_cmd=False, **kwargs):
     """Blast a local database.
     Args:
         database: local blast db name
@@ -123,7 +123,7 @@ def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
     cline = NcbiblastxCommandline(query=query, cmd=cmd, db=database,
                                  max_target_seqs=maxseqs,
                                  outfmt=outfmt, out=output,
-                                 evalue=evalue, num_threads=cpus, **kwargs)
+                                 evalue=evalue, num_threads=threads, **kwargs)
     if show_cmd == True:
         print (cline)
     stdout, stderr = cline()

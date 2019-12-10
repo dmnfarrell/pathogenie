@@ -25,7 +25,8 @@ setup(
                       'future'],
     entry_points = {
         'console_scripts': [
-            'pyamrfinder=pyamrfinder.app:main']
+            'pyamrfinder=pyamrfinder.app:main',
+            'pyamrfindergui=pyamrfinder.gui:main']
             },
     classifiers = ['Operating System :: OS Independent',
             'Programming Language :: Python :: 2.7',

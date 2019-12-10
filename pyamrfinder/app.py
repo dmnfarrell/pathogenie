@@ -23,6 +23,7 @@
 from __future__ import absolute_import, print_function
 import sys,os,subprocess,glob
 import urllib
+import tempfile
 import pandas as pd
 import numpy as np
 import pylab as plt
@@ -31,6 +32,7 @@ from Bio.Seq import Seq
 from Bio import SeqIO
 from . import tools
 
+tempdir = tempfile.gettempdir()
 home = os.path.expanduser("~")
 config_path = os.path.join(home,'.config/pyamrfinder')
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
@@ -82,22 +84,21 @@ def make_blast_database(filenames):
         for s in seqs:
             s.id = n + '~' + s.id
         rec.extend(seqs)
-    #ref = list(SeqIO.parse('genomes/ecoli_k12.fa','fasta'))
-    #ref[0].id = 'ecoli_k12~1'
-    #rec.extend(ref)
-    SeqIO.write(rec, 'targets.fasta', 'fasta')
-    cmd = 'makeblastdb -dbtype nucl -in targets.fasta'
+
+    targfile = os.path.join(tempdir, 'targets.fasta')
+    SeqIO.write(rec, targfile, 'fasta')
+    cmd = 'makeblastdb -dbtype nucl -in %s' %targfile
     subprocess.check_output(cmd, shell=True)
     return
 
-def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False, **kwargs):
+def find_genes(target, ref='card', ident=90, coverage=75, threads=4, duplicates=False, **kwargs):
     """Find ref genes by blasting the target sequences"""
 
     path = os.path.join(dbdir,'%s.fa' %ref)
     dbseqs = list(SeqIO.parse(path,'fasta'))
     print ('blasting %s sequences' %len(dbseqs))
     bl = tools.blast_sequences(target, dbseqs, maxseqs=100, evalue=.1,
-                               cmd='blastn', show_cmd=True)
+                               cmd='blastn', show_cmd=True, threads=threads)
 
     bl['qlength'] = bl.sequence.str.len()
     bl['coverage'] = bl.length/bl.qlength*100
@@ -112,7 +113,7 @@ def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False, **kw
     bl = bl.sort_values(['coverage','pident'], ascending=False).drop_duplicates(['contig','sstart','send'])
     if duplicates == False:
         dist = 20
-        bl=bl.sort_values(by=["contig","sstart"])
+        bl = bl.sort_values(by=["contig","sstart"])
         unique = bl.sstart.diff().fillna(dist)
         bl = bl[unique>=dist]
     cols = ['gene','id','qseqid','pident','coverage','sstart','send','contig','filename']
@@ -120,7 +121,7 @@ def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False, **kw
     return bl
 
 def get_gene_hits(res, gene, filename, db='card'):
-    """Get blast hit results"""
+    """Get blast hit results for a gene"""
 
     path = os.path.join(dbdir,'%s.fa' %db)
     #dbseqs = SeqIO.to_dict(SeqIO.parse(path,'fasta'))
@@ -192,17 +193,20 @@ def plot_heatmap(m, fig=None, title=''):
     fig.subplots_adjust(hspace=1.2, bottom=.2)
     return
 
-def run(filenames=[], db='card', **kwargs):
+def run(filenames=[], db='card', outdir='amr_results', **kwargs):
     """Run pipeline"""
 
     check_databases()
     make_blast_database(filenames)
-    bl = find_genes('targets.fasta', db, **kwargs)
-    #find_gene_hits(bl, 'dfrA1_9', '../test_files/RF15B.fa', db)
-    bl.to_csv('%s_results.csv' %db)
+    targfile = os.path.join(tempdir, 'targets.fasta')
+    print (targfile)
+    bl = find_genes(targfile, db, **kwargs)
     m = pivot_blast_results(bl)
-    plot_heatmap(m)
-    m.to_csv('%s_matrix.csv' %db)
+    #plot_heatmap(m)
+    if outdir != None:
+        os.makedirs(outdir, exist_ok=True)
+        bl.to_csv(os.path.join(outdir,'%s_results.csv' %db))
+        m.to_csv(os.path.join(outdir,'%s_matrix.csv' %db))
     return
 
 def run_test():
@@ -221,6 +225,8 @@ def main():
                         help="input fasta file", metavar="FILE")
     parser.add_argument("-p", "--path", dest="path",
                         help="input fasta file", metavar="FILE")
+    parser.add_argument("-o", "--out", dest="outdir",
+                        help="output folder", metavar="FILE")
     parser.add_argument("-d", "--db", dest="db", default='card',
                         help="input fasta file")
     parser.add_argument("-i", "--ident", dest="identity", default='card',

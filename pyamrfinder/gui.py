@@ -128,9 +128,9 @@ class AMRFinderApp(Frame):
 
     def options_frame(self):
 
-        f = Frame(self.main)
         self.opts = AppOptions(parent=self)
         w = self.opts.showDialog(self.main, layout='vertical')
+        dialogs.addButton(w, 'Run', self.run)
         return w
 
     def create_menu_bar(self):
@@ -222,7 +222,7 @@ class AMRFinderApp(Frame):
         self.st.insert(END, string)
         self.st.see(END)
 
-    def flush(self, string):
+    def flush(self, string=None):
         return
 
     def run(self):
@@ -244,8 +244,8 @@ class AMRFinderApp(Frame):
         files = self.inputs.filename
         print ('running %s files' %len(files))
         app.make_blast_database(files)
-
-        bl = app.find_genes('targets.fasta', db, **kwds)
+        targfile = os.path.join(app.tempdir, 'targets.fasta')
+        bl = app.find_genes(targfile, db, outdir=None, **kwds)
         bl.to_csv('%s_results.csv' %db)
         print ('found %s genes' %len(bl.gene.unique()))
         m = app.pivot_blast_results(bl)
@@ -258,7 +258,7 @@ class AMRFinderApp(Frame):
         t.model.df = m.T.reset_index()
         t.redraw()
         t.setWrap()
-        m.to_csv('%s_matrix.csv' %db)
+        #m.to_csv('%s_matrix.csv' %db)
         print ('done')
         self.load_results()
         return
@@ -423,11 +423,12 @@ class AppOptions(dialogs.TkOptions):
 
         self.parent = parent
         dbs = app.db_names
-        self.groups = {'options':['db','identity','coverage']}
+        self.groups = {'options':['db','identity','coverage','threads']}
         self.opts = {'db':{'type':'combobox','default':'card',
                     'items':dbs,'label':'database'},
                     'identity':{'type':'entry','default':90},
                     'coverage':{'type':'entry','default':50},
+                    'threads':{'type':'entry','default':4},
                     #'best hit':{'type':'checkbutton','default':True,
                     #'label':'keep best hit only'}
                     }
