@@ -40,7 +40,7 @@ You also require ncbi-blast+ tools. This can be installed on Debian/Ubuntu based
 
 ```sudo apt install ncbi-blast+```
 
-On windows you can install blast tools from [this link](ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.9.0+-win64.exe).
+On windows you can install blast tools from <a href="ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.9.0+-win64.exe">this link</a>
 
 ### Windows
 
