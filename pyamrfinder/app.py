@@ -87,8 +87,13 @@ def make_blast_database(filenames):
 
     targfile = os.path.join(tempdir, 'targets.fasta')
     SeqIO.write(rec, targfile, 'fasta')
-    cmd = 'makeblastdb -dbtype nucl -in %s' %targfile
-    subprocess.check_output(cmd, shell=True)
+    cmd = 'makeblastdb'
+    if getattr(sys, 'frozen', False):
+        print ('bundled app in windows')
+        cmd = tools.resource_path('bin/makeblastdb.exe')
+
+    cline = '%s -dbtype nucl -in %s' %(cmd,targfile)
+    subprocess.check_output(cline, shell=True)
     return
 
 def find_genes(target, ref='card', ident=90, coverage=75, threads=4, duplicates=False, **kwargs):
@@ -207,6 +212,7 @@ def run(filenames=[], db='card', outdir='amr_results', **kwargs):
         os.makedirs(outdir, exist_ok=True)
         bl.to_csv(os.path.join(outdir,'%s_results.csv' %db))
         m.to_csv(os.path.join(outdir,'%s_matrix.csv' %db))
+    print ('results saved to %s' %outdir)
     return
 
 def run_test():
@@ -225,7 +231,7 @@ def main():
                         help="input fasta file", metavar="FILE")
     parser.add_argument("-p", "--path", dest="path",
                         help="input fasta file", metavar="FILE")
-    parser.add_argument("-o", "--out", dest="outdir",
+    parser.add_argument("-o", "--out", dest="outdir", default='amr_results',
                         help="output folder", metavar="FILE")
     parser.add_argument("-d", "--db", dest="db", default='card',
                         help="input fasta file")
@@ -240,7 +246,7 @@ def main():
         return
     if args['path'] != None:
         args['filenames'] = glob.glob(os.path.join(args['path'],'*.fa*'))
-    if len(args['filenames']) == 0:
+    if args['filenames'] == None:
         return
     run(**args)
 

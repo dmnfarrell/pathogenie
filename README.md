@@ -26,9 +26,11 @@ This program utilises the sequence databases compiled by abricate. Possible data
 
 You can also use a graphical application. It can be launched from the terminal using:
 
+```pyamrfindergui```
+
 <img src=img/screenshot1.png width=480px>
 
-There is also an installer provided for windows users.
+There is a self-contained graphical application for windows users (see below).
 
 ## Installation
 
@@ -36,15 +38,21 @@ All operating systems with Python (>=3.6 recommended) installed:
 
 ```pip install pyamrfinder```
 
-You also require ncbi-blast+ tools. This can be installed on Debian/Ubuntu based systems using:
+### Windows GUI
 
-```sudo apt install ncbi-blast+```
+Most windows users will probably want to use the bundled graphical application. [Download here](https://github.com/dmnfarrell/pyamrfinder/releases/download/v0.1.0/pyamrfinder-0.1.0-win64.zip). Just unzip to a folder and launch the program **pyamrfinder.exe**.
 
-On windows you can install blast tools from <a href="ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.9.0+-win64.exe">this link</a>
+This has all the dependencies bundled with the program.
 
-### Windows
+## Dependencies
 
-Most windows users will probably want to use the installer for the graphical application. [Download here](https://github.com/dmnfarrell/pyamrfinder/releases/download/v0.1.0/pyamrfinder-0.1.0-win32.msi)
+You also require ncbi-blast+ tools and clustalw. These can be installed on Debian/Ubuntu based systems using:
+
+```sudo apt install ncbi-blast+ clustal```
+
+On Windows, (if installing via pip) you can install blast tools from here:
+
+ftp://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/ncbi-blast-2.9.0+-win64.exe
 
 ## Links
 

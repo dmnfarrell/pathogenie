@@ -24,7 +24,7 @@ block_cipher = None
 
 a = Analysis(['main.py'],
              pathex=['/home/farrell/gitprojects/pyamrfinder'],
-             binaries=[('clustalw2.exe', 'bin')],
+             binaries=[('win_binaries/*', 'bin')],
              hiddenimports=[],
              hookspath=[],
              runtime_hooks=[],

@@ -20,6 +20,7 @@
 
 from __future__ import print_function
 import sys,os,subprocess,glob,shutil
+import platform
 from Bio import Entrez
 Entrez.email = 'A.N.Other@example.com'
 from Bio.SeqRecord import SeqRecord
@@ -36,6 +37,11 @@ import pandas as pd
 home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'data')
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base_path, relative_path)
 
 def fastq_to_dataframe(f, size=None):
     """Convert fastq to dataframe.
@@ -118,6 +124,10 @@ def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
 
     if output == None:
         output = os.path.splitext(query)[0]+'_blast.txt'
+    if getattr(sys, 'frozen', False):
+        print ('bundled app in windows')
+        cmd = resource_path('bin/blastn.exe')        
+
     from Bio.Blast.Applications import NcbiblastxCommandline
     outfmt = '"6 qseqid sseqid qseq sseq pident qcovs length mismatch gapopen qstart qend sstart send evalue bitscore stitle"'
     cline = NcbiblastxCommandline(query=query, cmd=cmd, db=database,
@@ -184,8 +194,16 @@ def clustal_alignment(filename=None, seqs=None, command="clustalw"):
         filename = 'temp.faa'
         SeqIO.write(seqs, filename, "fasta")
     name = os.path.splitext(filename)[0]
+    if platform.system() == 'Windows':
+        command = 'clustalw2'
+    #if bundled app in windows use custom binary location
+    if getattr(sys, 'frozen', False):
+        command = resource_path('bin/clustalw2.exe')
+        print (command)
+
     from Bio.Align.Applications import ClustalwCommandline
     cline = ClustalwCommandline(command, infile=filename)
+    print (cline)
     stdout, stderr = cline()
     align = AlignIO.read(name+'.aln', 'clustal')
     return align

@@ -1,11 +1,11 @@
 from setuptools import setup
 import sys,os
 
-with open('pyamrfinder/description.txt') as f:
+with open('README.md') as f:
     long_description = f.read()
 
 setup(
-    name = 'pypyamrfinder',
+    name = 'pyamrfinder',
     version = '0.1.0',
     description = 'find amr genes from fasta sequences',
     long_description = long_description,
