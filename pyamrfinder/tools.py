@@ -102,14 +102,17 @@ def fasta_to_dataframe(infile, header_sep=None, key='name', seqkey='sequence'):
     df[key] = df[key].str.replace('|','_')
     return df
 
-def run_blastn(database, query, params='-e .1 -G 10'):
-    """Run blast"""
+def make_blast_database(filename, dbtype='nucl'):
+    """Create a blast db from fasta file"""
+    
+    cmd = 'makeblastdb'
+    #if frozen app
+    if getattr(sys, 'frozen', False):
+        print ('bundled app in windows')
+        cmd = tools.resource_path('bin/makeblastdb.exe')
 
-    out = 'blast_result.csv'
-    cmd = 'blastall -d %s -i %s -p blastn -m 8 %s > %s' %(database,query,params,out)
-    print (cmd)
-    result = subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    #zipfile(out+'.xml', remove=True)
+    cline = '%s -dbtype %s -in %s' %(cmd,dbtype,filename)
+    subprocess.check_output(cline, shell=True)
     return
 
 def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,

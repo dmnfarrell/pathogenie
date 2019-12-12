@@ -38,6 +38,7 @@ config_path = os.path.join(home,'.config/pyamrfinder')
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'data')
 dbdir = os.path.join(config_path, 'db')
+prokkadbdir = os.path.join(config_path, 'prokka')
 if not os.path.exists(config_path):
     try:
         os.makedirs(config_path, exist_ok=True)
@@ -63,7 +64,6 @@ def fetch_sequence_db(name='card'):
     """
 
     path = dbdir
-
     if name in db_names:
         url = 'https://raw.githubusercontent.com/tseemann/abricate/master/db/%s/sequences' %name
     else:
@@ -75,8 +75,29 @@ def fetch_sequence_db(name='card'):
         urllib.request.urlretrieve(url, filename)
     return
 
-def make_blast_database(filenames):
-    """Make blast dbs of multiple input files"""
+def fetch_prokka_db(name='sprot'):
+    """
+    Get updated sequences from abricate github repo.
+    Download new dbs to config folder.
+    """
+
+    prokka_db_names = ['sprot','IS','AMR']
+    path = app.prokkadbdir
+    os.makedirs(path, exist_ok=True)
+    if name in prokka_db_names:
+        url = 'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/%s' %name
+    else:
+        print('no such name')
+        return
+
+    filename = os.path.join(path,"%s.fa" %name)
+    if not os.path.exists(filename):
+        urllib.request.urlretrieve(url, filename)
+    return
+
+fetch_prokka_db()
+def make_target_database(filenames):
+    """Make blast db from multiple input files"""
 
     rec=[]
     for n in filenames:
@@ -87,24 +108,19 @@ def make_blast_database(filenames):
 
     targfile = os.path.join(tempdir, 'targets.fasta')
     SeqIO.write(rec, targfile, 'fasta')
-    cmd = 'makeblastdb'
-    if getattr(sys, 'frozen', False):
-        print ('bundled app in windows')
-        cmd = tools.resource_path('bin/makeblastdb.exe')
-
-    cline = '%s -dbtype nucl -in %s' %(cmd,targfile)
-    subprocess.check_output(cline, shell=True)
+    tools.make_blast_database(targfile)
     return
 
-def find_genes(target, ref='card', ident=90, coverage=75, threads=4, duplicates=False, **kwargs):
+def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False):
     """Find ref genes by blasting the target sequences"""
 
     path = os.path.join(dbdir,'%s.fa' %ref)
-    dbseqs = list(SeqIO.parse(path,'fasta'))
-    print ('blasting %s sequences' %len(dbseqs))
-    bl = tools.blast_sequences(target, dbseqs, maxseqs=100, evalue=.1,
-                               cmd='blastn', show_cmd=True, threads=threads)
-
+    #the AMR db is the query for the blast
+    queryseqs = list(SeqIO.parse(path,'fasta'))
+    print ('blasting %s sequences' %len(queryseqs))
+    bl = tools.blast_sequences(target, queryseqs, maxseqs=100, evalue=.1,
+                               cmd='blastn', show_cmd=True)
+    
     bl['qlength'] = bl.sequence.str.len()
     bl['coverage'] = bl.length/bl.qlength*100
     bl = bl[bl.coverage>coverage]
@@ -113,12 +129,12 @@ def find_genes(target, ref='card', ident=90, coverage=75, threads=4, duplicates=
     bl['id'] = bl.filename.apply(lambda x: os.path.basename(x),1)
     bl['contig'] = bl.sseqid.apply(lambda x: x.split('~')[1],1)
     bl['gene'] = bl['qseqid'].apply(lambda x: x.split('~~~')[1],1)
-
+    
     #remove exact and close duplicates
     bl = bl.sort_values(['coverage','pident'], ascending=False).drop_duplicates(['contig','sstart','send'])
     if duplicates == False:
         dist = 20
-        bl = bl.sort_values(by=["contig","sstart"])
+        bl=bl.sort_values(by=["contig","sstart"])   
         unique = bl.sstart.diff().fillna(dist)
         bl = bl[unique>=dist]
     cols = ['gene','id','qseqid','pident','coverage','sstart','send','contig','filename']
@@ -202,7 +218,7 @@ def run(filenames=[], db='card', outdir='amr_results', **kwargs):
     """Run pipeline"""
 
     check_databases()
-    make_blast_database(filenames)
+    make_target_database(filenames)
     targfile = os.path.join(tempdir, 'targets.fasta')
     print (targfile)
     bl = find_genes(targfile, db, **kwargs)

@@ -243,7 +243,7 @@ class AMRFinderApp(Frame):
         self.inputs = self.fasta_table.model.df
         files = self.inputs.filename
         print ('running %s files' %len(files))
-        app.make_blast_database(files)
+        app.make_target_database(files)
         targfile = os.path.join(app.tempdir, 'targets.fasta')
         bl = app.find_genes(targfile, db, outdir=None, **kwds)
         bl.to_csv('%s_results.csv' %db)

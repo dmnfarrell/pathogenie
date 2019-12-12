@@ -40,7 +40,7 @@ All operating systems with Python (>=3.6 recommended) installed:
 
 ### Windows GUI
 
-Most windows users will probably want to use the bundled graphical application. [Download here](https://github.com/dmnfarrell/pyamrfinder/releases/download/v0.1.0/pyamrfinder-0.1.0-win64.zip). Just unzip to a folder and launch the program **pyamrfinder.exe**.
+Most windows users will probably want to use the bundled graphical application. [Download here](https://github.com/dmnfarrell/pyamrfinder/releases/download/0.1.0/pyamrfinder-0.1.0-win64.zip). Just unzip to a folder and launch the program **pyamrfinder.exe**.
 
 This has all the dependencies bundled with the program.
 
