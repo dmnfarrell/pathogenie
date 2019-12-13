@@ -82,7 +82,7 @@ def fetch_prokka_db(name='sprot'):
     """
 
     prokka_db_names = ['sprot','IS','AMR']
-    path = app.prokkadbdir
+    path = prokkadbdir
     os.makedirs(path, exist_ok=True)
     if name in prokka_db_names:
         url = 'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/%s' %name
@@ -111,7 +111,7 @@ def make_target_database(filenames):
     tools.make_blast_database(targfile)
     return
 
-def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False):
+def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False, **kwds):
     """Find ref genes by blasting the target sequences"""
 
     path = os.path.join(dbdir,'%s.fa' %ref)
@@ -120,7 +120,7 @@ def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False):
     print ('blasting %s sequences' %len(queryseqs))
     bl = tools.blast_sequences(target, queryseqs, maxseqs=100, evalue=.1,
                                cmd='blastn', show_cmd=True)
-    
+
     bl['qlength'] = bl.sequence.str.len()
     bl['coverage'] = bl.length/bl.qlength*100
     bl = bl[bl.coverage>coverage]
@@ -129,12 +129,12 @@ def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False):
     bl['id'] = bl.filename.apply(lambda x: os.path.basename(x),1)
     bl['contig'] = bl.sseqid.apply(lambda x: x.split('~')[1],1)
     bl['gene'] = bl['qseqid'].apply(lambda x: x.split('~~~')[1],1)
-    
+
     #remove exact and close duplicates
     bl = bl.sort_values(['coverage','pident'], ascending=False).drop_duplicates(['contig','sstart','send'])
     if duplicates == False:
         dist = 20
-        bl=bl.sort_values(by=["contig","sstart"])   
+        bl=bl.sort_values(by=["contig","sstart"])
         unique = bl.sstart.diff().fillna(dist)
         bl = bl[unique>=dist]
     cols = ['gene','id','qseqid','pident','coverage','sstart','send','contig','filename']

@@ -37,6 +37,8 @@ import pandas as pd
 home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'data')
+featurekeys = ['type','protein_id','locus_tag','gene','db_xref',
+               'product', 'note', 'translation','pseudo','start','end','strand']
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
@@ -88,6 +90,83 @@ def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
     SeqIO.write(seqs, outfile, "fasta")
     return outfile
 
+def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
+                     descrkey='description',
+                     outfile='out.faa'):
+    """Genbank features to fasta file"""
+
+    seqs=[]
+    for i,row in df.iterrows():
+        if descrkey in df.columns:
+            d=row[descrkey]
+        else:
+            d=''
+        rec = SeqRecord(Seq(row[seqkey]),id=row[idkey],
+                            description=d)
+        seqs.append(rec)
+    SeqIO.write(seqs, outfile, "fasta")
+    return outfile
+
+def genbank_to_dataframe(infile, cds=False):
+    """Get genome records from a genbank file into a dataframe
+      returns a dataframe with a row for each cds/entry"""
+
+    recs = list(SeqIO.parse(infile,'genbank'))
+    df = features_to_dataframe(recs, cds)
+    return df
+
+def check_tags(df):
+    """Check genbank tags to make sure they are not empty.
+    Args: pandas dataframe
+    """
+
+    def replace(x):
+        if pd.isnull(x.locus_tag):
+            return x.gene
+        else:
+            return x.locus_tag
+    df['locus_tag'] = df.apply(replace,1)
+    return df
+
+def features_to_dataframe(features, cds=False):
+    """Get features from a biopython seq record object into a dataframe
+    Args:
+        features: bio seqfeatures
+       returns: a dataframe with a row for each cds/entry.
+      """
+
+    #preprocess features
+    allfeat = []
+    for (item, f) in enumerate(features):
+        x = f.__dict__
+        quals = f.qualifiers
+        x.update(quals)
+        d = {}
+        d['start'] = f.location.start
+        d['end'] = f.location.end
+        d['strand'] = f.location.strand
+        for i in featurekeys:
+            if i in x:
+                if type(x[i]) is list:
+                    d[i] = x[i][0]
+                else:
+                    d[i] = x[i]
+        allfeat.append(d)
+    #featurekeys = list(quals.keys())+['start','end','strand','translation']
+    df = pd.DataFrame(allfeat,columns=featurekeys)
+    df['length'] = df.translation.astype('str').str.len()
+    #print (df)
+    df = check_tags(df)
+    df['gene'] = df.gene.fillna(df.locus_tag)
+    if cds == True:
+        df = get_cds(df)
+        df['order'] = range(1,len(df)+1)
+    #print (df)
+    if len(df) == 0:
+        print ('ERROR: genbank file return empty data, check that the file contains protein sequences '\
+               'in the translation qualifier of each protein feature.' )
+    return df
+
 def fasta_to_dataframe(infile, header_sep=None, key='name', seqkey='sequence'):
     """Get fasta proteins into dataframe"""
 
@@ -101,6 +180,17 @@ def fasta_to_dataframe(infile, header_sep=None, key='name', seqkey='sequence'):
         df[key] = df[key].apply(lambda x: x.split(header_sep)[0],1)
     df[key] = df[key].str.replace('|','_')
     return df
+
+def gff_to_features(gff_file):
+    """Get features from gff file"""
+
+    if gff_file is None or not os.path.exists(gff_file):
+        return
+    from BCBio import GFF
+    in_handle = open(gff_file,'r')
+    rec = list(GFF.parse(in_handle))[0]
+    in_handle.close()
+    return rec.features
 
 def make_blast_database(filename, dbtype='nucl'):
     """Create a blast db from fasta file"""
