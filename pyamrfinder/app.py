@@ -21,7 +21,7 @@
 """
 
 from __future__ import absolute_import, print_function
-import sys,os,subprocess,glob
+import sys,os,subprocess,glob,re
 import urllib
 import tempfile
 import pandas as pd
@@ -39,6 +39,12 @@ module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'data')
 dbdir = os.path.join(config_path, 'db')
 prokkadbdir = os.path.join(config_path, 'prokka')
+prokka_db_names = ['sprot','IS','AMR']
+links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequences',
+        'resfinder':'https://raw.githubusercontent.com/tseemann/abricate/master/db/resfinder/sequences',
+        'vfdb':'https://raw.githubusercontent.com/tseemann/abricate/master/db/vfdb/sequences',
+        'sprot':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/sprot'}
+
 if not os.path.exists(config_path):
     try:
         os.makedirs(config_path, exist_ok=True)
@@ -54,18 +60,19 @@ def check_databases():
     os.makedirs(dbdir, exist_ok=True)
     for name in db_names:
         #print (name)
-        fetch_sequence_db(name)
+        fetch_sequence_from_url(name)
     return
 
-def fetch_sequence_db(name='card'):
-    """
-    Get updated sequences from abricate github repo.
-    Download new dbs to config folder.
-    """
+def fetch_sequence_from_url(name='card', path=None):
+    """get sequences"""
 
-    path = dbdir
-    if name in db_names:
-        url = 'https://raw.githubusercontent.com/tseemann/abricate/master/db/%s/sequences' %name
+    if path == None:
+        path = dbdir
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    if name in links:
+        url = links[name]
     else:
         print('no such name')
         return
@@ -75,27 +82,6 @@ def fetch_sequence_db(name='card'):
         urllib.request.urlretrieve(url, filename)
     return
 
-def fetch_prokka_db(name='sprot'):
-    """
-    Get updated sequences from abricate github repo.
-    Download new dbs to config folder.
-    """
-
-    prokka_db_names = ['sprot','IS','AMR']
-    path = prokkadbdir
-    os.makedirs(path, exist_ok=True)
-    if name in prokka_db_names:
-        url = 'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/%s' %name
-    else:
-        print('no such name')
-        return
-
-    filename = os.path.join(path,"%s.fa" %name)
-    if not os.path.exists(filename):
-        urllib.request.urlretrieve(url, filename)
-    return
-
-fetch_prokka_db()
 def make_target_database(filenames):
     """Make blast db from multiple input files"""
 
@@ -213,6 +199,94 @@ def plot_heatmap(m, fig=None, title=''):
     fig.suptitle(title)
     fig.subplots_adjust(hspace=1.2, bottom=.2)
     return
+
+def prodigal(infile):
+    """Run prodigal"""
+
+    cmd = 'prodigal'
+    if getattr(sys, 'frozen', False):
+        cmd = tools.resource_path('bin/prodigal.exe')
+    name = os.path.splitext(infile)[0]
+    cmd = '{c} -i {n}.fa -a {n}.faa -f gff -o {n}.gff -p single'.format(c=cmd,n=name)
+    subprocess.check_output(cmd, shell=True)
+    resfile = name+'.faa'
+    return resfile
+
+def get_prodigal_coords(x):
+    s = re.split('\#|\s',x.replace(' ',''))
+    coords = [int(i) for i in s[1:4]]
+    return  pd.Series(coords)
+
+def prokka_header_info(x):
+    s = re.split('~~~',x)
+    return pd.Series(s)
+
+def annotate_contigs(infile, outfile=None, **kwargs):
+    """
+    Annotate nucelotide sequences (usually a draft assembly with contigs)
+    using prodigal and blast to prokka seqs. Writes a genbank file to the
+    same folder.
+    Args:
+        infile: input fasta file
+        outfile: output genbank
+    returns:
+        a list of SeqRecords with the features
+    """
+
+    #run prodigal
+    resfile = prodigal(infile)
+    print (resfile)
+    #get target seqs
+    seqs = list(SeqIO.parse(resfile,'fasta'))
+    #make blast db of prokka proteins
+    dbname = os.path.join(prokkadbdir,'sprot.fa')
+    tools.make_blast_database(dbname, dbtype='prot')
+    print ('blasting ORFS to uniprot sequences')
+    bl = tools.blast_sequences(dbname, seqs, maxseqs=100, evalue=.01,
+                                cmd='blastp', show_cmd=True, **kwargs)
+
+    bl[['protein_id','gene','product','cog']] = bl.stitle.apply(prokka_header_info,1)
+
+    cols = ['qseqid','sseqid','pident','sstart','send','protein_id','gene','product']
+    x = bl.sort_values(['qseqid','pident'], ascending=False).drop_duplicates(['qseqid'])[cols]
+
+    #read input file seqs
+    contigs = SeqIO.to_dict(SeqIO.parse(infile,'fasta'))
+    #read in prodigal fasta to dataframe
+    df = tools.fasta_to_dataframe(resfile)
+
+    df[['start','end','strand']] = df.description.apply(get_prodigal_coords,1)
+    #merge blast result with prodigal fasta file info
+    df = df.merge(x,left_on='name',right_on='qseqid',how='left')
+    df['contig'] = df['name'].apply(lambda x: x[:6])
+
+    def get_contig(x):
+        return ('_').join(x.split('_')[:-1])
+    from Bio.SeqFeature import SeqFeature, FeatureLocation
+    from Bio.Alphabet import generic_dna
+    l=1
+    if outfile is None:
+        outfile = infile+'.gbk'
+    handle = open(outfile,'w+')
+    recs = []
+    #group by contig and get features for each protein found
+    for c,df in df.groupby('contig'):
+        contig = get_contig(df.iloc[0]['name'])
+        nucseq = contigs[contig].seq
+        rec = SeqRecord(nucseq,id=c)
+        rec.seq.alphabet = generic_dna
+        for i,row in df.iterrows():
+            tag = 'PREF_{l:04d}'.format(l=l)
+            quals = {'gene':row.gene,'product':row['product'],'locus_tag':tag,'translation':row.sequence}
+            feat = SeqFeature(FeatureLocation(row.start,row.end, row.strand), strand=row.strand,
+                              type="CDS", qualifiers=quals)
+            rec.features.append(feat)
+            l+=1
+        #print(rec.format("gb"))
+        SeqIO.write(rec, handle, "genbank")
+        recs.append(rec)
+    handle.close()
+    return recs
 
 def run(filenames=[], db='card', outdir='amr_results', **kwargs):
     """Run pipeline"""

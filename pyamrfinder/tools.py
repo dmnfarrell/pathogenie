@@ -19,7 +19,7 @@
 """
 
 from __future__ import print_function
-import sys,os,subprocess,glob,shutil
+import sys,os,subprocess,glob,shutil,re
 import platform
 from Bio import Entrez
 Entrez.email = 'A.N.Other@example.com'
@@ -90,22 +90,14 @@ def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
     SeqIO.write(seqs, outfile, "fasta")
     return outfile
 
-def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
-                     descrkey='description',
-                     outfile='out.faa'):
-    """Genbank features to fasta file"""
+def dataframe_to_seqrecords(df, seqkey='sequence', idkey='id'):
+    """Dataframe to list of Bio.SeqRecord objects"""
 
     seqs=[]
-    for i,row in df.iterrows():
-        if descrkey in df.columns:
-            d=row[descrkey]
-        else:
-            d=''
-        rec = SeqRecord(Seq(row[seqkey]),id=row[idkey],
-                            description=d)
-        seqs.append(rec)
-    SeqIO.write(seqs, outfile, "fasta")
-    return outfile
+    for i,r in df.iterrows():
+        s=SeqRecord(Seq(r[seqkey]),id=r[idkey])
+        seqs.append(s)
+    return seqs
 
 def genbank_to_dataframe(infile, cds=False):
     """Get genome records from a genbank file into a dataframe
@@ -128,6 +120,17 @@ def check_tags(df):
     df['locus_tag'] = df.apply(replace,1)
     return df
 
+def gff_to_features(gff_file):
+    """Get features from gff file"""
+
+    if gff_file is None or not os.path.exists(gff_file):
+        return
+    from BCBio import GFF
+    in_handle = open(gff_file,'r')
+    rec = list(GFF.parse(in_handle))[0]
+    in_handle.close()
+    return rec.features
+
 def features_to_dataframe(features, cds=False):
     """Get features from a biopython seq record object into a dataframe
     Args:
@@ -135,7 +138,7 @@ def features_to_dataframe(features, cds=False):
        returns: a dataframe with a row for each cds/entry.
       """
 
-    #preprocess features
+    featurekeys = []
     allfeat = []
     for (item, f) in enumerate(features):
         x = f.__dict__
@@ -145,23 +148,19 @@ def features_to_dataframe(features, cds=False):
         d['start'] = f.location.start
         d['end'] = f.location.end
         d['strand'] = f.location.strand
-        for i in featurekeys:
+        d['id'] = f.id 
+        for i in quals:
             if i in x:
                 if type(x[i]) is list:
                     d[i] = x[i][0]
                 else:
                     d[i] = x[i]
         allfeat.append(d)
-    #featurekeys = list(quals.keys())+['start','end','strand','translation']
-    df = pd.DataFrame(allfeat,columns=featurekeys)
-    df['length'] = df.translation.astype('str').str.len()
-    #print (df)
-    df = check_tags(df)
-    df['gene'] = df.gene.fillna(df.locus_tag)
-    if cds == True:
-        df = get_cds(df)
-        df['order'] = range(1,len(df)+1)
-    #print (df)
+    quals = list(quals.keys())+['id','start','end','strand']
+    df = pd.DataFrame(allfeat,columns=quals)
+    if 'translation' in df.keys():
+        df['length'] = df.translation.astype('str').str.len()
+
     if len(df) == 0:
         print ('ERROR: genbank file return empty data, check that the file contains protein sequences '\
                'in the translation qualifier of each protein feature.' )
@@ -180,17 +179,6 @@ def fasta_to_dataframe(infile, header_sep=None, key='name', seqkey='sequence'):
         df[key] = df[key].apply(lambda x: x.split(header_sep)[0],1)
     df[key] = df[key].str.replace('|','_')
     return df
-
-def gff_to_features(gff_file):
-    """Get features from gff file"""
-
-    if gff_file is None or not os.path.exists(gff_file):
-        return
-    from BCBio import GFF
-    in_handle = open(gff_file,'r')
-    rec = list(GFF.parse(in_handle))[0]
-    in_handle.close()
-    return rec.features
 
 def make_blast_database(filename, dbtype='nucl'):
     """Create a blast db from fasta file"""

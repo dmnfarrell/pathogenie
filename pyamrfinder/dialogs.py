@@ -21,7 +21,7 @@
 """
 
 from __future__ import absolute_import, print_function
-import sys,os
+import sys,os,platform
 try:
     from tkinter import *
     from tkinter.ttk import *
@@ -362,11 +362,88 @@ class MyTable(Table):
         popupmenu.post(event.x_root, event.y_root)
         return popupmenu
 
+class FilesTable(Table):
+    """
+      Custom table class inherits from Table.
+      You can then override required methods
+     """
+    def __init__(self, parent=None, app=None, **kwargs):
+        Table.__init__(self, parent, **kwargs)
+        self.app = app
+        return
+
+    def popupMenu(self, event, rows=None, cols=None, outside=None):
+        """Custom right click menu"""
+
+        popupmenu = Menu(self, tearoff = 0)
+        def popupFocusOut(event):
+            popupmenu.unpost()
+        popupmenu.add_command(label='Annotate contigs', command=self.app.annotate_file)
+        popupmenu.add_command(label='Show sequences', command=self.app.show_fasta)
+        popupmenu.bind("<FocusOut>", popupFocusOut)
+        popupmenu.focus_set()
+        popupmenu.post(event.x_root, event.y_root)
+        return popupmenu
+
 class ProgressDialog(Toplevel):
     def __init__(self):
         Toplevel.__init__()
         prog = Progressbar(self, orient='horizontal',
                             length=200, mode='indeterminate')
+
+class SimpleEditor(Frame):
+    """Simple text editor"""
+
+    def __init__(self, parent=None, width=100, height=40, font=None):
+
+        Frame.__init__(self, parent)
+        st = self.text = ScrolledText(self, width=width, height=height, bg='white', fg='black')
+        st.pack(in_=self, fill=BOTH, expand=1)
+        if font == None:
+            if 'Windows' in platform.system():
+                font = ('Courier New',10)
+            else:
+                font = 'monospace 10'
+        st.config(font=font)
+        btnform = Frame(self)
+        btnform.pack(fill=BOTH)
+        Button(btnform, text='Save',  command=self.onSave).pack(side=LEFT)
+        #Button(frm, text='Cut',   command=self.onCut).pack(side=LEFT)
+        #Button(frm, text='Paste', command=self.onPaste).pack(side=LEFT)
+        Button(btnform, text='Find',  command=self.onFind).pack(side=LEFT)
+        Button(btnform, text='Clear',  command=self.onClear).pack(side=LEFT)
+        self.target=''
+        return
+
+    def onSave(self):
+        """Save text"""
+
+        filename = filedialog.asksaveasfilename(defaultextension='.txt',
+                                    initialdir=os.path.expanduser('~'),
+                                     filetypes=(('Text files', '*.txt'),
+                                                ('All files', '*.*')))
+        if filename:
+            with open(filename, 'w') as stream:
+                stream.write(self.text.get('1.0',END))
+        return
+
+    def onClear(self):
+        """Clear text"""
+        self.text.delete('1.0',END)
+        return
+
+    def onFind(self):
+        self.target = simpledialog.askstring('SimpleEditor', 'Search String?',
+                                initialvalue=self.target)
+        if self.target:
+            where = self.text.search(self.target, INSERT, END, nocase=True)
+            if where:
+                pastit = '{}+{}c'.format(where, len(self.target))
+                self.text.tag_add(SEL, where, pastit)
+                self.text.mark_set(INSERT, pastit)
+                self.text.see(INSERT)
+                self.text.focus()
+
 
 class Progress():
     """ threaded progress bar for tkinter gui """

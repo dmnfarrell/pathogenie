@@ -47,6 +47,23 @@ from . import tools, app, images, dialogs
 home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 
+class progress():
+    def __init__(self, parent):
+
+        self.progressbar = Progressbar(parent, orient=HORIZONTAL,
+                                       mode='indeterminate', length=200)
+        self.progressbar.pack(expand=1)
+
+    def start(self):
+        self.t = threading.Thread()
+        self.t.__init__(target = self.progressbar.start, args = ())
+        self.t.start()
+        return
+
+    def end(self):
+        if self.t.isAlive() == False:
+            self.progressbar.stop()
+            self.t.join()
 
 class AMRFinderApp(Frame):
     """Application using tkinter widgets.
@@ -92,7 +109,8 @@ class AMRFinderApp(Frame):
         #top table
         f1 = Frame(left)
         left.add(f1)
-        t = self.fasta_table = Table(f1, dafaframe=None, showtoolbar=0, showstatusbar=1)
+        t = self.fasta_table = dialogs.FilesTable(f1, app=self, dafaframe=None,
+                                                    showtoolbar=0, showstatusbar=1)
         t.model.df = pd.DataFrame()
         t.show()
 
@@ -124,6 +142,9 @@ class AMRFinderApp(Frame):
         right.add(self.plotfr)
         self.m.add(right)
         self.set_geometry()
+        #self.progressbar = Progressbar(self.main, orient=HORIZONTAL, length=200, mode='indeterminate')
+        #self.progressbar.pack(side=BOTTOM,fill=BOTH,expand=True)
+        self.progressbar = progress(self.main)
         return
 
     def options_frame(self):
@@ -149,6 +170,7 @@ class AMRFinderApp(Frame):
         analysismenuitems = {'01Run':{'cmd': self.run},
                              '02Get sequences for gene':{'cmd': self.show_fasta_sequences},
                              '03Show alignment for gene':{'cmd': self.show_gene_alignment},
+                             '04Annotate contigs':{'cmd': self.annotate},
                             }
         self.analysis_menu = self.create_pulldown(self.menu, analysismenuitems, var=analysis_menu)
         self.menu.add_cascade(label='Analysis',menu=self.analysis_menu['var'])
@@ -225,20 +247,66 @@ class AMRFinderApp(Frame):
     def flush(self, string=None):
         return
 
+    def annotate_file(self):
+
+        self.opts.applyOptions()
+        kwds = self.opts.kwds
+        df = self.fasta_table.model.df
+        row = self.fasta_table.getSelectedRow()
+        data = df.iloc[row]
+        file = data.filename
+        app.annotate_contigs(file, threads=kwds['threads'])
+        return
+
+    def show_fasta(self):
+        """SHow selected input fasta file"""
+
+        df = self.fasta_table.model.df
+        row = self.fasta_table.getSelectedRow()
+        data = df.iloc[row]
+        from Bio import SeqIO
+        seqs = SeqIO.parse(data.filename, 'fasta')
+        w = Toplevel(self)
+        w.grab_set()
+        w.transient(self)
+        w.title(data.filename)
+        ed = dialogs.SimpleEditor(w, height=25)
+        ed.pack(in_=w, fill=BOTH, expand=Y)
+
+        for s in seqs:
+            ed.text.insert(END, s.format("fasta"))
+        return
+
+    def annotate(self):
+        """Run gene annotation for inputf files"""
+
+        self.opts.applyOptions()
+        kwds = self.opts.kwds
+        self.inputs = self.fasta_table.model.df
+        files = self.inputs.filename
+        self.annotations = {}
+        #self.progressbar.start()
+        for file in files:
+            app.annotate_contigs(file, threads=kwds['threads'])
+            sys.stdout.flush()
+
+        #self.progressbar.stop()
+        return
+
     def run(self):
         """Run pipeline"""
 
+        self.progressbar.start()
         sys.stdout = self
         #app.run(self.filenames, 'card')
         if len(self.inputs) == 0:
             print('you need to load fasta files')
             return
         self.opts.applyOptions()
-        print (self.opts.kwds)
         app.check_databases()
         kwds = self.opts.kwds
         db = kwds['db']
-        app.fetch_sequence_db(db)
+        app.fetch_sequence_from_url(db)
         #update inputs from table
         self.inputs = self.fasta_table.model.df
         files = self.inputs.filename
@@ -422,6 +490,9 @@ class AppOptions(dialogs.TkOptions):
         """Setup variables"""
 
         self.parent = parent
+        import multiprocessing
+        cpus = multiprocessing.cpu_count()
+        threadlist = list(range(1,cpus+1))
         dbs = app.db_names
         self.groups = {'options':['db','identity','coverage','threads']}
         self.opts = {'db':{'type':'combobox','default':'card',
