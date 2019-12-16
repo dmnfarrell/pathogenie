@@ -22,7 +22,7 @@
 
 from __future__ import absolute_import, print_function
 import sys,os,subprocess,glob,platform
-import threading
+import threading,time
 try:
     from tkinter import *
     from tkinter.ttk import *
@@ -47,10 +47,11 @@ from . import tools, app, images, dialogs
 home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 
-class progress():
+class Progress(Frame):
     def __init__(self, parent):
-
-        self.progressbar = Progressbar(parent, orient=HORIZONTAL,
+        Frame.__init__(self)
+        self.main=self.master
+        self.progressbar = Progressbar(self.main, orient=HORIZONTAL,
                                        mode='indeterminate', length=200)
         self.progressbar.pack(expand=1)
 
@@ -88,9 +89,10 @@ class AMRFinderApp(Frame):
 
         self.main.title('pyAMRfinder')
         self.create_menu_bar()
-        self.setup_gui()
         self.filenames = filenames
         self.inputs = []
+        self.outputdir = os.path.join(home,'amr_results')
+        self.setup_gui()
         self.main.protocol('WM_DELETE_WINDOW',self.quit)
         self.main.lift()
         self.load_fasta_table()
@@ -99,6 +101,12 @@ class AMRFinderApp(Frame):
     def setup_gui(self):
         """Add all GUI elements"""
 
+        self.progress = Progress(self.main)
+        self.progress.pack(side=TOP,fill=BOTH,expand=1)
+        self.outdirvar = StringVar()
+        self.outdirvar.set(self.outputdir)
+        outlabel = Label(self.main, textvariable=self.outdirvar)
+        outlabel.pack(side=TOP,)
         self.m = PanedWindow(self.main, orient=HORIZONTAL)
         self.m.pack(fill=BOTH,expand=1)
 
@@ -142,9 +150,6 @@ class AMRFinderApp(Frame):
         right.add(self.plotfr)
         self.m.add(right)
         self.set_geometry()
-        #self.progressbar = Progressbar(self.main, orient=HORIZONTAL, length=200, mode='indeterminate')
-        #self.progressbar.pack(side=BOTTOM,fill=BOTH,expand=True)
-        self.progressbar = progress(self.main)
         return
 
     def options_frame(self):
@@ -161,8 +166,9 @@ class AMRFinderApp(Frame):
         file_menu = Menu(self.menu,tearoff=0)
         filemenuitems = {'01Load Fasta Files':{'cmd': lambda: self.load_fasta_files()},
                          '02Load Test Files':{'cmd': lambda: self.load_test()},
-                    '04sep':'',
-                    '06Quit':{'cmd':self.quit}}
+                         '03Set Output Folder':{'cmd': lambda: self.set_output_folder()},
+                         '04sep':'',
+                         '05Quit':{'cmd':self.quit}}
         self.file_menu = self.create_pulldown(self.menu, filemenuitems, var=file_menu)
         self.menu.add_cascade(label='File',menu=self.file_menu['var'])
 
@@ -185,6 +191,16 @@ class AMRFinderApp(Frame):
 
     def read_file_info(self):
 
+        return
+
+    def set_output_folder(self):
+
+        dir = filedialog.askdirectory(initialdir=home,
+                                      parent=self.main)
+        if not dir:
+            return
+        self.outputdir = dir
+        self.outdirvar.set(dir)
         return
 
     def load_test(self):
@@ -247,16 +263,14 @@ class AMRFinderApp(Frame):
     def flush(self, string=None):
         return
 
-    def annotate_file(self):
+    def get_selected_file(self):
+        """Get selected file from files table"""
 
-        self.opts.applyOptions()
-        kwds = self.opts.kwds
         df = self.fasta_table.model.df
         row = self.fasta_table.getSelectedRow()
         data = df.iloc[row]
         file = data.filename
-        app.annotate_contigs(file, threads=kwds['threads'])
-        return
+        return file
 
     def show_fasta(self):
         """SHow selected input fasta file"""
@@ -277,6 +291,29 @@ class AMRFinderApp(Frame):
             ed.text.insert(END, s.format("fasta"))
         return
 
+    def annotate_file(self):
+
+        self.opts.applyOptions()
+        kwds = self.opts.kwds
+        df = self.fasta_table.model.df
+        row = self.fasta_table.getSelectedRow()
+        data = df.iloc[row]
+
+        outfile = data.label + '.gbk'
+        self.progress.start()
+        def fun1(a):
+            for i in range(5):
+                print (i)
+                time.sleep(1)
+            return
+        thread = threading.Thread(target = fun1, kwargs={'a':2})
+        thread.start()
+        #app.annotate_contigs(file, threads=kwds['threads'])
+        #self.progressbar.stop()
+        df.loc[row,'genbank'] = outfile
+        self.fasta_table.redraw()
+        return
+
     def annotate(self):
         """Run gene annotation for inputf files"""
 
@@ -285,20 +322,17 @@ class AMRFinderApp(Frame):
         self.inputs = self.fasta_table.model.df
         files = self.inputs.filename
         self.annotations = {}
-        #self.progressbar.start()
         for file in files:
             app.annotate_contigs(file, threads=kwds['threads'])
             sys.stdout.flush()
 
-        #self.progressbar.stop()
         return
 
     def run(self):
         """Run pipeline"""
 
-        self.progressbar.start()
+        #self.progress.start()
         sys.stdout = self
-        #app.run(self.filenames, 'card')
         if len(self.inputs) == 0:
             print('you need to load fasta files')
             return
