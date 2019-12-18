@@ -378,9 +378,10 @@ class FilesTable(Table):
         popupmenu = Menu(self, tearoff = 0)
         def popupFocusOut(event):
             popupmenu.unpost()
-        popupmenu.add_command(label='Show sequences', command=self.app.show_fasta)
-        popupmenu.add_command(label='Annotate file', command=self.app.annotate_file)
-        popupmenu.add_command(label='Annotate all', command=self.app.annotate)
+        popupmenu.add_command(label='Show Sequences', command=self.app.show_fasta)
+        popupmenu.add_command(label='Annotate File', command=self.app.annotate_file)
+        #popupmenu.add_command(label='Annotate all', command=self.app.annotate)
+        popupmenu.add_command(label='Show Annotation', command=self.app.show_annotation)
         popupmenu.bind("<FocusOut>", popupFocusOut)
         popupmenu.focus_set()
         popupmenu.post(event.x_root, event.y_root)

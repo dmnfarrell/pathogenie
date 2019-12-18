@@ -104,8 +104,12 @@ def genbank_to_dataframe(infile, cds=False):
       returns a dataframe with a row for each cds/entry"""
 
     recs = list(SeqIO.parse(infile,'genbank'))
-    df = features_to_dataframe(recs, cds)
-    return df
+    res=[]
+    for rec in recs:
+        df = features_to_dataframe(rec.features, cds)
+        res.append(df)
+    res = pd.concat(res)
+    return res
 
 def check_tags(df):
     """Check genbank tags to make sure they are not empty.
@@ -139,7 +143,7 @@ def features_to_dataframe(features, cds=False):
       """
 
     featurekeys = []
-    allfeat = []
+    allfeat = []   
     for (item, f) in enumerate(features):
         x = f.__dict__
         quals = f.qualifiers

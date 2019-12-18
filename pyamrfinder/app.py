@@ -30,6 +30,8 @@ import pylab as plt
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
+from Bio.SeqFeature import SeqFeature, FeatureLocation
+from Bio.Alphabet import generic_dna
 from . import tools
 
 tempdir = tempfile.gettempdir()
@@ -248,7 +250,7 @@ def annotate_contigs(infile, outfile=None, **kwargs):
     bl[['protein_id','gene','product','cog']] = bl.stitle.apply(prokka_header_info,1)
 
     cols = ['qseqid','sseqid','pident','sstart','send','protein_id','gene','product']
-    x = bl.sort_values(['qseqid','pident'], ascending=False).drop_duplicates(['qseqid'])[cols]
+    bl = bl.sort_values(['qseqid','pident'], ascending=False).drop_duplicates(['qseqid'])[cols]
 
     #read input file seqs
     contigs = SeqIO.to_dict(SeqIO.parse(infile,'fasta'))
@@ -257,14 +259,13 @@ def annotate_contigs(infile, outfile=None, **kwargs):
 
     df[['start','end','strand']] = df.description.apply(get_prodigal_coords,1)
     #merge blast result with prodigal fasta file info
-    df = df.merge(x,left_on='name',right_on='qseqid',how='left')
+    df = df.merge(bl,left_on='name',right_on='qseqid',how='left')
     df['contig'] = df['name'].apply(lambda x: x[:6])
 
     def get_contig(x):
         return ('_').join(x.split('_')[:-1])
-    from Bio.SeqFeature import SeqFeature, FeatureLocation
-    from Bio.Alphabet import generic_dna
-    l=1
+
+    l=1  #counter for assigning locus tags
     if outfile is None:
         outfile = infile+'.gbk'
     handle = open(outfile,'w+')
