@@ -40,7 +40,6 @@ import matplotlib
 matplotlib.use('TkAgg', warn=False)
 import pandas as pd
 import numpy as np
-from pandastable import Table
 
 def get_parent_geometry(parent):
     x = parent.winfo_rootx()
@@ -338,60 +337,6 @@ class TkOptions(object):
             if i in self.tkvars and self.tkvars[i]:
                 self.tkvars[i].set(kwds[i])
         return
-
-class MyTable(Table):
-    """
-      Custom table class inherits from Table.
-      You can then override required methods
-     """
-    def __init__(self, parent=None, app=None, **kwargs):
-        Table.__init__(self, parent, **kwargs)
-        self.app = app
-        return
-
-    def popupMenu(self, event, rows=None, cols=None, outside=None):
-        """Custom right click menu"""
-
-        popupmenu = Menu(self, tearoff = 0)
-        def popupFocusOut(event):
-            popupmenu.unpost()
-        popupmenu.add_command(label='Show gene sequences', command=self.app.show_fasta_sequences)
-        popupmenu.add_command(label='Show gene alignment', command=self.app.show_gene_alignment)
-        popupmenu.bind("<FocusOut>", popupFocusOut)
-        popupmenu.focus_set()
-        popupmenu.post(event.x_root, event.y_root)
-        return popupmenu
-
-class FilesTable(Table):
-    """
-      Custom table class inherits from Table.
-      You can then override required methods
-     """
-    def __init__(self, parent=None, app=None, **kwargs):
-        Table.__init__(self, parent, **kwargs)
-        self.app = app
-        return
-
-    def popupMenu(self, event, rows=None, cols=None, outside=None):
-        """Custom right click menu"""
-
-        popupmenu = Menu(self, tearoff = 0)
-        def popupFocusOut(event):
-            popupmenu.unpost()
-        popupmenu.add_command(label='Show Sequences', command=self.app.show_fasta)
-        popupmenu.add_command(label='Annotate File', command=self.app.annotate_file)
-        #popupmenu.add_command(label='Annotate all', command=self.app.annotate)
-        popupmenu.add_command(label='Show Annotation', command=self.app.show_annotation)
-        popupmenu.bind("<FocusOut>", popupFocusOut)
-        popupmenu.focus_set()
-        popupmenu.post(event.x_root, event.y_root)
-        return popupmenu
-
-class ProgressDialog(Toplevel):
-    def __init__(self):
-        Toplevel.__init__()
-        prog = Progressbar(self, orient='horizontal',
-                            length=200, mode='indeterminate')
 
 class SimpleEditor(Frame):
     """Simple text editor"""

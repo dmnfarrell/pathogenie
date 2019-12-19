@@ -43,7 +43,7 @@ matplotlib.use('TkAgg', warn=False)
 import pandas as pd
 import numpy as np
 from pandastable import Table
-from . import tools, app, images, dialogs
+from . import tools, app, images, dialogs, tables
 
 home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
@@ -52,9 +52,9 @@ class Progress(Frame):
     def __init__(self, parent):
         Frame.__init__(self, height=30)
         self.main = self.master
-        self.progressbar = Progressbar(self.main, orient=HORIZONTAL,
+        self.progressbar = Progressbar(parent, orient=HORIZONTAL,
                                        mode='indeterminate', length=200)
-        self.progressbar.pack(side=BOTTOM,pady=5)
+        self.progressbar.pack(side=LEFT)
 
     def start(self):
         self.t = threading.Thread()
@@ -73,7 +73,7 @@ class AMRFinderApp(Frame):
             parent: parent tkinter Frame, default None
     """
 
-    def __init__(self, parent=None, filenames=[]):
+    def __init__(self, parent=None, filenames=[], project=None):
         """Initialize the application. """
 
         self.parent=parent
@@ -94,21 +94,28 @@ class AMRFinderApp(Frame):
         self.inputs = []
         self.annotations = {}
         self.outputdir = os.path.join(home,'amr_results')
+        self.sheets = {}
         self.setup_gui()
         self.main.protocol('WM_DELETE_WINDOW',self.quit)
         self.main.lift()
+        if project != None:
+            self.load_project(project)
         self.load_fasta_table()
         return
 
     def setup_gui(self):
         """Add all GUI elements"""
 
-        self.progress = Progress(self.main)
-        self.progress.pack(side=TOP)
+        #progress and info pane
+        self.set_geometry()
+        bottom = Frame(self.main)
+        bottom.pack(side=BOTTOM,fill=BOTH)
+        self.progress = Progress(bottom)
+        self.progress.pack(side=RIGHT,pady=10,padx=10)
         self.outdirvar = StringVar()
         self.outdirvar.set(self.outputdir)
-        outlabel = Label(self.main, textvariable=self.outdirvar)
-        outlabel.pack(side=BOTTOM,expand=False,pady=10)
+        outlabel = Label(bottom, textvariable=self.outdirvar)
+        outlabel.pack(side=LEFT,pady=10,padx=10)
 
         self.m = PanedWindow(self.main, orient=HORIZONTAL)
         self.m.pack(fill=BOTH,expand=1)
@@ -119,14 +126,14 @@ class AMRFinderApp(Frame):
         #top table
         f1 = Frame(left)
         left.add(f1)
-        t = self.fasta_table = dialogs.FilesTable(f1, app=self, dafaframe=None,
+        t = self.fasta_table = tables.FilesTable(f1, app=self, dafaframe=None,
                                                     showtoolbar=0, showstatusbar=1)
         t.model.df = pd.DataFrame()
         t.show()
 
         #bottom table
         self.nb = Notebook(self.main)
-        f2 = Frame()
+        '''f2 = Frame()
         t = self.results_table = dialogs.MyTable(f2, app=self, showtoolbar=0, showstatusbar=1,
                                         editable=False, height=500)
         t.model.df = pd.DataFrame()
@@ -137,7 +144,7 @@ class AMRFinderApp(Frame):
                                         editable=False, height=500)
         t.model.df = pd.DataFrame()
         t.show()
-        self.nb.add(f3, text='matrix')
+        self.nb.add(f3, text='matrix')'''
 
         left.add(self.nb)
         self.m.add(left)
@@ -151,8 +158,6 @@ class AMRFinderApp(Frame):
         self.ax = self.fig.add_subplot(111)
         right.add(self.plotfr)
         self.m.add(right)
-
-        self.set_geometry()
         return
 
     def options_frame(self):
@@ -171,7 +176,7 @@ class AMRFinderApp(Frame):
                          '02Load Test Files':{'cmd': lambda: self.load_test()},
                          '03Set Output Folder':{'cmd': lambda: self.set_output_folder()},
                          '04sep':'',
-                         '05Load Project':{'cmd': lambda: self.load_project()},
+                         '05Load Project':{'cmd': lambda: self.load_project_dialog()},
                          '06Save Project':{'cmd': lambda: self.save_project()},
                          '07Quit':{'cmd':self.quit}}
         self.file_menu = self.create_pulldown(self.menu, filemenuitems, var=file_menu)
@@ -199,14 +204,33 @@ class AMRFinderApp(Frame):
 
         data={}
         data['inputs'] = self.inputs
+        data['sheets'] = self.sheets
         #data['meta'] = self.saveMeta(table)
         pickle.dump(data, open(filename,'wb'))
         return
 
-    def load_project(self):
+    def load_project(self, filename):
         """Load project"""
 
-        '''filename = filedialog.askopenfilename(defaultextension='.dexpl"',
+        #filename='test.pyamr'
+        self.clear_project()
+        data = pickle.load(open(filename,'rb'))
+        self.inputs = data['inputs']
+        if 'sheets' in data:
+            self.sheets = data['sheets']
+        for s in self.sheets:
+            self.add_table(s, self.sheets[s])
+        ft=self.fasta_table
+        ft.model.df = self.inputs
+        ft.expandColumns(150)
+        self.fasta_table.redraw()
+        self.filename = filename
+        self.main.title('pyamrfinder: %s' %filename)
+        return
+
+    def load_project_dialog(self):
+
+        filename = filedialog.askopenfilename(defaultextension='.dexpl"',
                                                 initialdir=os.getcwd(),
                                                 filetypes=[("project","*.pyamr"),
                                                            ("All files","*.*")],
@@ -214,14 +238,8 @@ class AMRFinderApp(Frame):
         if not filename:
             return
         if not os.path.exists(filename):
-            print ('no such file')'''
-        filename='test.pyamr'
-        data = pickle.load(open(filename,'rb'))
-        self.inputs = data['inputs']
-        self.fasta_table.model.df = self.inputs
-        self.fasta_table.redraw()
-        self.filename = filename
-        self.main.title('pyamrfinder: %s' %filename)
+            print ('no such file')
+        self.load_project(filename)
         return
 
     def set_output_folder(self):
@@ -259,11 +277,33 @@ class AMRFinderApp(Frame):
         self.clear_results()
         return
 
-    def clear_results(self):
-        self.results_table.model.df = pd.DataFrame()
-        self.results_table.redraw()
+    def clear_project(self):
+        """Clear all loaded inputs and results"""
+
+        self.inputs=[]
+        self.fasta_table.model.df = pd.DataFrame()
+        self.sheets={}
+        for n in self.nb.tabs():
+            self.nb.forget(n)
         self.fig.clear()
         self.canvas.draw()
+        return
+
+    def add_table(self, name, df):
+        """Add a table"""
+
+        self.sheets[name] = df
+        self.show_table(name, df)
+        return
+
+    def show_table(self, name, df):
+        """Add a table to the results notebook"""
+
+        f = Frame(height=500)
+        t = tables.GenesTable(f, dataframe=df, app=self, showtoolbar=0, showstatusbar=1,
+                                editable=False, height=500)
+        t.show()
+        self.nb.add(f, text=name)
         return
 
     def load_fasta_table(self):
@@ -275,14 +315,12 @@ class AMRFinderApp(Frame):
         self.inputs = pd.DataFrame({'label':names,'filename':self.filenames})
         pt = self.fasta_table
         pt.model.df = self.inputs
-        pt.adjustColumnWidths()
-        pt.redraw()
+        pt.expandColumns(50)
+        #pt.redraw()
         return
 
-    def load_results(self):
-        #print (self.bl)
-        self.results_table.model.df = self.bl
-        self.results_table.redraw()
+    def load_results(self, label):
+
         return
 
     def write(self, string):
@@ -322,20 +360,18 @@ class AMRFinderApp(Frame):
         return
 
     def show_annotation(self):
+        """Show annotation results for an input file in table"""
 
         row = self.get_selected_file()
         name = row.label
+
+        if name in self.sheets:
+            return
         genbank = row.genbank
-        #read from genbank file
-        #from Bio import SeqIO
-        #recs = SeqIO.parse(row.genbank,'genbank')
         print(row.genbank)
         featsdf = tools.genbank_to_dataframe(row.genbank)
-        f=Frame(self.nb)
-        t=Table(f)
-        t.model.df = featsdf
-        t.show()
-        self.nb.add(f, text=name)
+
+        self.add_table(name, featsdf)
         return
 
     def annotate_file(self):
@@ -408,13 +444,12 @@ class AMRFinderApp(Frame):
         self.fig.clear()
         app.plot_heatmap(m.T, fig=self.fig, title='results matrix')
         self.canvas.draw()
-        t=self.matrix_table
-        t.model.df = m.T.reset_index()
-        t.redraw()
-        t.setWrap()
         #m.to_csv('%s_matrix.csv' %db)
         print ('done')
-        self.load_results()
+        self.sheets['results'] = bl
+        self.add_table('results', bl)
+        self.sheets['matrix'] = m.T.reset_index()
+        self.add_table('matrix',m.T.reset_index())
         return
 
     def get_selected_gene(self):
@@ -599,9 +634,14 @@ def main():
     parser = ArgumentParser(description='AMRfinder tool')
     parser.add_argument("-f", "--fasta", dest="filenames",default=[],
                         help="input fasta file", metavar="FILE")
+    parser.add_argument("-p", "--proj", dest="project",default=None,
+                        help="load .pyamr project file", metavar="FILE")
     args = vars(parser.parse_args())
+    #if args['filenames'] != None:
+    #    app = AMRFinderApp(filenames=args['filenames'])
+    #elif args['project'] != None:
+    app = AMRFinderApp(**args)
 
-    app = AMRFinderApp(filenames=args['filenames'])
     app.mainloop()
 
 if __name__ == '__main__':
