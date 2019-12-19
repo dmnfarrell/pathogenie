@@ -1,20 +1,20 @@
 from setuptools import setup
 import sys,os
 
-with open('pyamrfinder/description.txt') as f:
+with open('pygenefinder/description.txt') as f:
     long_description = f.read()
 
 setup(
-    name = 'pyamrfinder',
+    name = 'pygenefinder',
     version = '0.1.0',
     description = 'find amr genes from fasta sequences',
     long_description = long_description,
-    url='https://github.com/dmnfarrell/pyamrfinder',
+    url='https://github.com/dmnfarrell/pygenefinder',
     license='GPL v3',
     author = 'Damien Farrell',
     author_email = 'farrell.damien@gmail.com',
-    packages = ['pyamrfinder'],
-    package_data={'pyamrfinder': ['data/*.*',
+    packages = ['pygenefinder'],
+    package_data={'pygenefinder': ['data/*.*',
                   'description.txt']
                  },
     install_requires=['numpy>=1.10',
@@ -25,8 +25,8 @@ setup(
                       'future'],
     entry_points = {
         'console_scripts': [
-            'pyamrfinder=pyamrfinder.app:main',
-            'pyamrfindergui=pyamrfinder.gui:main']
+            'pygenefinder=pygenefinder.app:main',
+            'pygenefindergui=pygenefinder.gui:main']
             },
     classifiers = ['Operating System :: OS Independent',
             'Programming Language :: Python :: 2.7',

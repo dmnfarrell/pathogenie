@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    pyamrfinder GUI.
+    pygenefinder GUI.
     Created Nov 2019
     Copyright (C) Damien Farrell
 
@@ -88,7 +88,7 @@ class AMRFinderApp(Frame):
         img = PhotoImage(file=icon)
         self.main.tk.call('wm', 'iconphoto', self.main._w, img)
 
-        self.main.title('pyAMRfinder')
+        self.main.title('pygenefinder')
         self.create_menu_bar()
         self.filenames = filenames
         self.inputs = []
@@ -133,19 +133,6 @@ class AMRFinderApp(Frame):
 
         #bottom table
         self.nb = Notebook(self.main)
-        '''f2 = Frame()
-        t = self.results_table = dialogs.MyTable(f2, app=self, showtoolbar=0, showstatusbar=1,
-                                        editable=False, height=500)
-        t.model.df = pd.DataFrame()
-        t.show()
-        self.nb.add(f2, text='results')
-        f3 = Frame(height=500)
-        t = self.matrix_table = dialogs.MyTable(f3, app=self, showtoolbar=0, showstatusbar=1,
-                                        editable=False, height=500)
-        t.model.df = pd.DataFrame()
-        t.show()
-        self.nb.add(f3, text='matrix')'''
-
         left.add(self.nb)
         self.m.add(left)
 
@@ -191,6 +178,12 @@ class AMRFinderApp(Frame):
         self.analysis_menu = self.create_pulldown(self.menu, analysismenuitems, var=analysis_menu)
         self.menu.add_cascade(label='Analysis',menu=self.analysis_menu['var'])
 
+        tables_menu = Menu(self.menu,tearoff=0)
+        tablesmenuitems = {'01Delete current table':{'cmd': self.delete_table},
+                            }
+        self.tables_menu = self.create_pulldown(self.menu, tablesmenuitems, var=tables_menu)
+        self.menu.add_cascade(label='Tables',menu=self.tables_menu['var'])
+
         self.help_menu={'01Online Help':{'cmd':self.online_documentation},
                         '02About':{'cmd':self.about}}
         self.help_menu=self.create_pulldown(self.menu,self.help_menu)
@@ -199,7 +192,7 @@ class AMRFinderApp(Frame):
         self.main.config(menu=self.menu)
         return
 
-    def save_project(self, filename='test.pyamr'):
+    def save_project(self, filename='test.pygf'):
         """Save project"""
 
         data={}
@@ -212,7 +205,7 @@ class AMRFinderApp(Frame):
     def load_project(self, filename):
         """Load project"""
 
-        #filename='test.pyamr'
+        #filename='test.pygfr'
         self.clear_project()
         data = pickle.load(open(filename,'rb'))
         self.inputs = data['inputs']
@@ -222,17 +215,17 @@ class AMRFinderApp(Frame):
             self.add_table(s, self.sheets[s])
         ft=self.fasta_table
         ft.model.df = self.inputs
-        ft.expandColumns(150)
+        #ft.expandColumns(150)
         self.fasta_table.redraw()
         self.filename = filename
-        self.main.title('pyamrfinder: %s' %filename)
+        self.main.title('pygenefinder: %s' %filename)
         return
 
     def load_project_dialog(self):
 
         filename = filedialog.askopenfilename(defaultextension='.dexpl"',
                                                 initialdir=os.getcwd(),
-                                                filetypes=[("project","*.pyamr"),
+                                                filetypes=[("project","*.pygf"),
                                                            ("All files","*.*")],
                                                 parent=self.main)
         if not filename:
@@ -257,7 +250,7 @@ class AMRFinderApp(Frame):
 
         files = glob.glob(os.path.join(app.datadir, '*.fa'))
         self.filenames = files
-        self.clear_results()
+        self.clear_project()
         self.load_fasta_table()
         return
 
@@ -274,7 +267,7 @@ class AMRFinderApp(Frame):
             return
         self.filenames = filenames
         self.load_fasta_table()
-        self.clear_results()
+        self.clear_project()
         return
 
     def clear_project(self):
@@ -282,6 +275,7 @@ class AMRFinderApp(Frame):
 
         self.inputs=[]
         self.fasta_table.model.df = pd.DataFrame()
+        self.fasta_table.redraw()
         self.sheets={}
         for n in self.nb.tabs():
             self.nb.forget(n)
@@ -289,22 +283,43 @@ class AMRFinderApp(Frame):
         self.canvas.draw()
         return
 
-    def add_table(self, name, df):
+    def add_table(self, name, df, kind='results'):
         """Add a table"""
 
         self.sheets[name] = df
-        self.show_table(name, df)
+        self.show_table(name, df, kind)
         return
 
-    def show_table(self, name, df):
+    def show_table(self, name, df, kind='results'):
         """Add a table to the results notebook"""
 
         f = Frame(height=500)
-        t = tables.GenesTable(f, dataframe=df, app=self, showtoolbar=0, showstatusbar=1,
-                                editable=False, height=500)
+        if kind == 'results':
+            t = tables.GenesTable(f, dataframe=df, app=self, showtoolbar=0, showstatusbar=1,
+                                    editable=False, height=500)
+        elif kind == 'features':
+            t = tables.FeaturesTable(f, dataframe=df, app=self, showtoolbar=0, showstatusbar=1,
+                                    editable=False, height=500)
         t.show()
         self.nb.add(f, text=name)
         return
+
+    def delete_table(self):
+        """Delete current table"""
+
+        s = self.nb.index(self.nb.select())
+        name = self.nb.tab(s, 'text')
+        self.nb.forget(s)
+        del self.sheets[name]
+        return
+
+    def get_selected_table(self):
+        """current table"""
+
+        s = self.nb.index(self.nb.select())
+        name = self.nb.tab(s, 'text')
+        t = self.sheets[name]
+        return t
 
     def load_fasta_table(self):
         """Load fasta inputs into table"""
@@ -315,12 +330,8 @@ class AMRFinderApp(Frame):
         self.inputs = pd.DataFrame({'label':names,'filename':self.filenames})
         pt = self.fasta_table
         pt.model.df = self.inputs
-        pt.expandColumns(50)
-        #pt.redraw()
-        return
-
-    def load_results(self, label):
-
+        #pt.expandColumns(50)
+        pt.redraw()
         return
 
     def write(self, string):
@@ -371,7 +382,7 @@ class AMRFinderApp(Frame):
         print(row.genbank)
         featsdf = tools.genbank_to_dataframe(row.genbank)
 
-        self.add_table(name, featsdf)
+        self.add_table(name, featsdf, kind='features')
         return
 
     def annotate_file(self):
@@ -446,15 +457,16 @@ class AMRFinderApp(Frame):
         self.canvas.draw()
         #m.to_csv('%s_matrix.csv' %db)
         print ('done')
-        self.sheets['results'] = bl
-        self.add_table('results', bl)
-        self.sheets['matrix'] = m.T.reset_index()
-        self.add_table('matrix',m.T.reset_index())
+
+        self.show_table(db, bl)
+        self.show_table('matrix',m.T.reset_index())
         return
 
     def get_selected_gene(self):
+        """get selected gene"""
 
-        row = self.results_table.getSelectedRow()
+        t = self.get_selected_table()
+        row = t.getSelectedRow()
         data = self.bl.iloc[row]
         gene = data.gene
         return gene
@@ -582,7 +594,7 @@ class AMRFinderApp(Frame):
         else:
             snap=''
 
-        text='pyamrfinder GUI\n'\
+        text='pygenefinder GUI\n'\
                 +'version '+__version__+snap+'\n'\
                 +'Copyright (C) Damien Farrell 2019-\n'\
                 +'This program is free software; you can redistribute it and/or\n'\
@@ -601,7 +613,7 @@ class AMRFinderApp(Frame):
     def online_documentation(self,event=None):
         """Open the online documentation"""
         import webbrowser
-        link='https://github.com/dmnfarrell/pyamrfinder'
+        link='https://github.com/dmnfarrell/pygenefinder'
         webbrowser.open(link,autoraise=1)
         return
 
@@ -635,7 +647,7 @@ def main():
     parser.add_argument("-f", "--fasta", dest="filenames",default=[],
                         help="input fasta file", metavar="FILE")
     parser.add_argument("-p", "--proj", dest="project",default=None,
-                        help="load .pyamr project file", metavar="FILE")
+                        help="load .pygf project file", metavar="FILE")
     args = vars(parser.parse_args())
     #if args['filenames'] != None:
     #    app = AMRFinderApp(filenames=args['filenames'])

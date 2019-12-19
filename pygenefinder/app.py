@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    AMR finder.
+    pygenefinder cmd line tool.
     Created Nov 2019
     Copyright (C) Damien Farrell
 
@@ -121,7 +121,7 @@ def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False, **kw
     #remove exact and close duplicates
     bl = bl.sort_values(['coverage','pident'], ascending=False).drop_duplicates(['contig','sstart','send'])
     if duplicates == False:
-        dist = 20
+        dist = 40
         bl=bl.sort_values(by=["contig","sstart"])
         unique = bl.sstart.diff().fillna(dist)
         bl = bl[unique>=dist]

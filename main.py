@@ -20,7 +20,7 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
-from pyamrfinder import gui
+from pygenefinder import gui
 
 def main():
     "Run the application"

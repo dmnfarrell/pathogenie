@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    pyamrfinder GUI.
+    pygenefinder dialog widgets.
     Created Nov 2019
     Copyright (C) Damien Farrell
 

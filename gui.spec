@@ -23,7 +23,7 @@ block_cipher = None
 
 
 a = Analysis(['main.py'],
-             pathex=['/home/farrell/gitprojects/pyamrfinder'],
+             pathex=['/home/farrell/gitprojects/pygenefinder'],
              binaries=[('win_binaries/*', 'bin')],
              hiddenimports=[],
              hookspath=[],
@@ -33,15 +33,15 @@ a = Analysis(['main.py'],
              win_private_assemblies=False,
              cipher=block_cipher,
              noarchive=False,
-             datas=[ ('pyamrfinder/logo.gif', 'pyamrfinder/'),
-                     ('pyamrfinder/data/*', 'pyamrfinder/data/')  ])
+             datas=[ ('pygenefinder/logo.gif', 'pygenefinder/'),
+                     ('pygenefinder/data/*', 'pygenefinder/data/')  ])
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
 exe = EXE(pyz,
           a.scripts,
           [],
           exclude_binaries=True,
-          name='pyamrfinder',
+          name='pygenefinder',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
@@ -55,4 +55,4 @@ coll = COLLECT(exe,
                strip=False,
                upx=True,
                upx_exclude=[],
-               name='pyamrfinder')
+               name='pygenefinder')
