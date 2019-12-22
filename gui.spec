@@ -33,7 +33,7 @@ a = Analysis(['main.py'],
              win_private_assemblies=False,
              cipher=block_cipher,
              noarchive=False,
-             datas=[ ('pygenefinder/logo.gif', 'pygenefinder/'),
+             datas=[ ('pygenefinder/logo.png', 'pygenefinder/'),
                      ('pygenefinder/data/*', 'pygenefinder/data/')  ])
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)

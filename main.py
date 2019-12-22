@@ -20,6 +20,7 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
+from PySide2.QtWidgets import *
 from pygenefinder import gui
 
 def main():
@@ -27,14 +28,15 @@ def main():
 
     import sys, os
     from argparse import ArgumentParser
-    parser = ArgumentParser(description='AMRfinder tool')
+    parser = ArgumentParser(description='pygenefinder tool')
     parser.add_argument("-f", "--fasta", dest="filename",
                         help="input fasta file", metavar="FILE")
     args = vars(parser.parse_args())
 
-    app = gui.AMRFinderApp()
-    app.mainloop()
-
+    app = QApplication(sys.argv)
+    aw = gui.pygenefinderApp()
+    aw.show()
+    app.exec_()
 
 if __name__ == '__main__':
     main()

@@ -6,7 +6,7 @@ with open('pygenefinder/description.txt') as f:
 
 setup(
     name = 'pygenefinder',
-    version = '0.1.0',
+    version = '0.2.0',
     description = 'find amr genes from fasta sequences',
     long_description = long_description,
     url='https://github.com/dmnfarrell/pygenefinder',
@@ -19,9 +19,9 @@ setup(
                  },
     install_requires=['numpy>=1.10',
                       'pandas>=0.24',
-                      'pandastable>=0.12.0',
                       'matplotlib>=3.0',
                       'biopython>=1.5',
+                      #'pyside2>=5.1',
                       'future'],
     entry_points = {
         'console_scripts': [

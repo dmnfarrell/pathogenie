@@ -143,7 +143,7 @@ def features_to_dataframe(features, cds=False):
       """
 
     featurekeys = []
-    allfeat = []   
+    allfeat = []
     for (item, f) in enumerate(features):
         x = f.__dict__
         quals = f.qualifiers
@@ -152,7 +152,7 @@ def features_to_dataframe(features, cds=False):
         d['start'] = f.location.start
         d['end'] = f.location.end
         d['strand'] = f.location.strand
-        d['id'] = f.id 
+        d['id'] = f.id
         for i in quals:
             if i in x:
                 if type(x[i]) is list:
@@ -184,9 +184,16 @@ def fasta_to_dataframe(infile, header_sep=None, key='name', seqkey='sequence'):
     df[key] = df[key].str.replace('|','_')
     return df
 
+def get_fasta_info(filename):
+    """Get fasta file info"""
+
+    df = fasta_to_dataframe(filename)
+    d = {'filename':filename, 'contigs':len(df)}
+    return d
+
 def make_blast_database(filename, dbtype='nucl'):
     """Create a blast db from fasta file"""
-    
+
     cmd = 'makeblastdb'
     #if frozen app
     if getattr(sys, 'frozen', False):
@@ -211,7 +218,7 @@ def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
         output = os.path.splitext(query)[0]+'_blast.txt'
     if getattr(sys, 'frozen', False):
         print ('bundled app in windows')
-        cmd = resource_path('bin/blastn.exe')        
+        cmd = resource_path('bin/blastn.exe')
 
     from Bio.Blast.Applications import NcbiblastxCommandline
     outfmt = '"6 qseqid sseqid qseq sseq pident qcovs length mismatch gapopen qstart qend sstart send evalue bitscore stitle"'
