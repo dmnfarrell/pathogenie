@@ -198,7 +198,7 @@ def make_blast_database(filename, dbtype='nucl'):
     #if frozen app
     if getattr(sys, 'frozen', False):
         print ('bundled app in windows')
-        cmd = tools.resource_path('bin/makeblastdb.exe')
+        cmd = resource_path('bin/makeblastdb.exe')
 
     cline = '%s -dbtype %s -in %s' %(cmd,dbtype,filename)
     subprocess.check_output(cline, shell=True)
