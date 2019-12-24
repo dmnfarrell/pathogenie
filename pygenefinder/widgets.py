@@ -24,7 +24,7 @@ from PySide2 import QtCore, QtGui
 from PySide2.QtCore import QObject
 from PySide2.QtWidgets import *
 from PySide2.QtGui import *
-from PySide2.QtWebEngineWidgets import *
+
 import sys, os, io
 import numpy as np
 import pandas as pd

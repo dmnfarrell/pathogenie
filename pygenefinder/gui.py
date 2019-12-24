@@ -59,20 +59,11 @@ class pygenefinderApp(QMainWindow):
         self.outputdir = os.path.join(home,'amr_results')
         self.sheets = {}
         self.annotations = {}
-        self.setup_gui()
-        #self.new_project()
 
+        #self.new_project()
         self.main.setFocus()
         self.setCentralWidget(self.main)
-        self.statusBar = QStatusBar()
-        from . import __version__
-        self.statusLabel = QLabel("pygenefinder %s" %__version__)
-        self.statusBar.addWidget(self.statusLabel, 1)
-        self.progressbar = QProgressBar()
-        self.progressbar.setRange(0,1)
-        self.statusBar.addWidget(self.progressbar, 2)
-        #self.progressbar.setValue(10)
-        self.setStatusBar(self.statusBar)
+        self.setup_gui()
         if project != None:
             self.load_project(project)
         self.threadpool = QtCore.QThreadPool()
@@ -96,12 +87,12 @@ class pygenefinderApp(QMainWindow):
         l.addWidget(self.fasta_table)
         self.fasta_table.setColumnWidth(0,200)
         self.fasta_table.setColumnWidth(1,400)
+
         self.tabs = QTabWidget(center)
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self.close_tab)
-        l.addWidget(self.tabs)
-        center.setSizes([50,100])
 
+        center.setSizes([50,100])
         right = QWidget(self.m)
         mainlayout.addWidget(right)
         self.info = QTextEdit(right, readOnly=True)
@@ -109,6 +100,16 @@ class pygenefinderApp(QMainWindow):
         l.addWidget(self.info)
         self.info.setText("Welcome to pygenefinder")
         self.m.setSizes([45,200,100])
+
+        self.statusBar = QStatusBar()
+        from . import __version__
+        self.statusLabel = QLabel("pygenefinder %s" %__version__)
+        self.statusBar.addWidget(self.statusLabel, 1)
+        self.progressbar = QProgressBar()
+        self.progressbar.setRange(0,1)
+        self.statusBar.addWidget(self.progressbar, 2)
+        #self.progressbar.setValue(10)
+        self.setStatusBar(self.statusBar)
         return
 
     @QtCore.Slot(int)
@@ -135,10 +136,11 @@ class pygenefinderApp(QMainWindow):
         self.file_menu = QMenu('&File', self)
         #self.file_menu.addAction('&New', self.newProject,
         #        QtCore.Qt.CTRL + QtCore.Qt.Key_N)
-        self.file_menu.addAction('&Load Fasta Files', self.load_fasta_files,
+        self.file_menu.addAction('&Load Fasta Files', self.load_fasta_files_dialog,
                 QtCore.Qt.CTRL + QtCore.Qt.Key_F)
         self.file_menu.addAction('&Load Test Files', self.load_test,
                 QtCore.Qt.CTRL + QtCore.Qt.Key_T)
+        self.menuBar().addSeparator()
         self.file_menu.addAction('&Open Project', self.load_project,
                 QtCore.Qt.CTRL + QtCore.Qt.Key_O)
         self.file_menu.addAction('&Save Project', self.save_project,
@@ -150,13 +152,13 @@ class pygenefinderApp(QMainWindow):
         self.analysis_menu = QMenu('&Analysis', self)
         self.menuBar().addSeparator()
         self.menuBar().addMenu(self.analysis_menu)
+        self.analysis_menu.addAction('&Set Output Folder', self.set_output_folder),
         self.analysis_menu.addAction('&Run',
             lambda: self.run_threaded_process(self.run_gene_finder, self.find_genes_completed))
         self.analysis_menu.addAction('&Annotate',
             lambda: self.run_threaded_process(self.annotate_files, self.annotation_completed))
 
         self.help_menu = QMenu('&Help', self)
-        self.menuBar().addSeparator()
         self.menuBar().addMenu(self.help_menu)
         self.help_menu.addAction('&Help', self.online_documentation)
         self.help_menu.addAction('&About', self.about)
@@ -226,8 +228,8 @@ class pygenefinderApp(QMainWindow):
 
     def set_output_folder(self):
 
-        dir = filedialog.askdirectory(initialdir=home,
-                                      parent=self.main)
+        selected_directory = QFileDialog.getExistingDirectory()
+
         if not dir:
             return
         self.outputdir = dir
@@ -266,7 +268,6 @@ class pygenefinderApp(QMainWindow):
         """Load fasta files"""
 
         options = QFileDialog.Options()
-        #from PySide2.QtWidgets import QFileDialog
         filenames, _ = QFileDialog.getOpenFileNames(self, 'Open File', './',
                                                     filter="All Files(*.*);;Fasta Files(*.fa)")
         if not filenames:
@@ -332,9 +333,7 @@ class pygenefinderApp(QMainWindow):
         name = data.label
         if name in self.sheets:
             return
-        #genbank = data.genbank
         featsdf = tools.genbank_to_dataframe(data.genbank)
-
         self.add_table(name, featsdf, kind='features')
         return
 
@@ -347,6 +346,15 @@ class pygenefinderApp(QMainWindow):
         name = data.label
         w = widgets.SeqFeaturesViewer(self)
         w.show_records(data.genbank)
+        return
+
+    def show_feature(self, row):
+        #call from table class?
+        index = self.tabs.currentIndex()
+        name = self.tabs.tabText(index)
+        df = self.sheets[name]
+        data = df.iloc[row]
+        self.info.append(data.to_string())
         return
 
     def annotate_files(self, progress_callback):

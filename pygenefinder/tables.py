@@ -355,7 +355,7 @@ class FilesTable(DataFrameTable):
         action = menu.exec_(self.mapToGlobal(event.pos()))
         # Map the logical row index to a real index for the source model
         #model = self.model
-        #row = model.df.loc[row]
+
         if action == fileinfoAction:
             #print (row)
             self.app.show_file_info(row)
@@ -396,5 +396,7 @@ class FeaturesTable(DataFrameTable):
     def addActions(self, event, row):
 
         menu = self.menu
-        fileinfoAction = menu.addAction("Show Feature")
+        showfeatureAction = menu.addAction("Show Feature")
         action = menu.exec_(self.mapToGlobal(event.pos()))
+        if action == showfeatureAction:            
+            self.app.show_feature(row)
