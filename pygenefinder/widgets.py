@@ -35,7 +35,7 @@ try:
 except AttributeError:
     def _fromUtf8(s):
         return s
-#from . import config, dialogs,
+from . import tools
 
 def dialogFromOptions(parent, opts, sections=None,
                       sticky='news', wrap=2, section_wrap=2):
@@ -278,14 +278,14 @@ class BaseOptions(object):
         return
 
 class SeqFeaturesViewer(QDialog):
-    """GUI Application using PySide2 widgets"""
+    """Sequence records features viewer"""
     def __init__(self, parent=None, filename=None):
 
         #QDialog.__init__(self)
         super(SeqFeaturesViewer, self).__init__(parent)
         self.ed = ed = QPlainTextEdit(self, readOnly=True)
         ed.setStyleSheet("font-family: monospace; font-size: 14px;")
-        #self.setWindowTitle(filename)
+        self.setWindowTitle('sequence features')
         self.setGeometry(QtCore.QRect(200, 200, 800, 800))
         #self.setCentralWidget(ed)
         l = QVBoxLayout(self)
@@ -296,14 +296,53 @@ class SeqFeaturesViewer(QDialog):
         l.addWidget(ed)
         self.show()
 
-    def show_records(self, filename):
+    def show_records(self, recs, format='genbank'):
 
         from Bio import SeqIO
-        recs = SeqIO.to_dict(SeqIO.parse(filename, 'genbank'))
-        for r in recs:
-            print (recs[r].id)
-            self.ed.appendPlainText(recs[r].format('genbank'))
+        recs = SeqIO.to_dict(recs)
+        if format == 'genbank':
+            for r in recs:
+                self.ed.appendPlainText(recs[r].format('genbank'))
+        elif format == 'gff':
+            tools.save_gff(recs,'temp.gff')
+            f = open('temp.gff','r')
+            for l in f.readlines():
+                self.ed.appendPlainText(l)
         recnames = list(recs.keys())
         self.recselect.addItems(recnames)
         self.recselect.setCurrentIndex(0)
         return
+
+class AlignmentViewer(QDialog):
+    """Alignment viewer"""
+    def __init__(self, parent=None):
+        super(AlignmentViewer, self).__init__(parent)
+        self.setModal(False)
+        self.setGeometry(QtCore.QRect(200, 200, 1000, 400))
+        self.setWindowTitle('sequence alignment')
+        l = QVBoxLayout(self)
+        self.setLayout(l)
+        self.tabs = QTabWidget(self)
+        self.tabs.setTabsClosable(True)
+        l.addWidget(self.tabs)
+        self.show()
+
+    def show_alignment(self, aln, name=''):
+
+        from PySide2.QtWebEngineWidgets import QWebEngineView
+        from . import viewers
+        from bokeh.plotting import figure, output_file, save
+        p = viewers.plot_sequence_alignment(aln)
+        output_file("seqs.html")
+        save(p)
+        webview = QWebEngineView()
+        path = os.path.abspath('seqs.html')
+        webview.load( QtCore.QUrl.fromLocalFile(path) )
+        self.tabs.addTab(webview,name)
+        return
+
+def plotViewer(QWidget):
+    def __init__(self, parent=None):
+        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+        from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+        import matplotlib.pyplot as plt

@@ -135,6 +135,13 @@ def gff_to_features(gff_file):
     in_handle.close()
     return rec.features
 
+def save_gff(recs, outfile):
+    f = open(outfile,'w')
+    from BCBio import GFF
+    for r in recs:
+        GFF.write([recs[r]], f)
+    return
+
 def features_to_dataframe(features, cds=False):
     """Get features from a biopython seq record object into a dataframe
     Args:

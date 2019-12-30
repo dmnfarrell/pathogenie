@@ -348,10 +348,11 @@ class FilesTable(DataFrameTable):
     def addActions(self, event, row):
 
         menu = self.menu
-        fileinfoAction = menu.addAction("Show File Summary")
+        fileinfoAction = menu.addAction("File Summary")
         annotateAction = menu.addAction("Annotate")
         showFeaturesAction = menu.addAction("Show Feature Table")
         showGenbankAction = menu.addAction("Show Genbank File")
+        showGFFAction = menu.addAction("Show GFF File")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         # Map the logical row index to a real index for the source model
         #model = self.model
@@ -367,6 +368,8 @@ class FilesTable(DataFrameTable):
             self.app.show_feature_table()
         elif action == showGenbankAction:
             self.app.show_genbank_file()
+        elif action == showGFFAction:
+            self.app.show_gff_file()
 
 class ResultsTable(DataFrameTable):
     """
@@ -380,8 +383,17 @@ class ResultsTable(DataFrameTable):
     def addActions(self, event, row):
 
         menu = self.menu
-        getSequencesAction = menu.addAction("Show sequences")
+        showSequencesAction = menu.addAction("Show sequences")
+        showAlignmentAction = menu.addAction("Show gene alignment")
+        showAlignmentViewerAction = menu.addAction("Show alignment in viewer")
         action = menu.exec_(self.mapToGlobal(event.pos()))
+        if action == showSequencesAction:
+            self.app.show_fasta_sequences(row)
+        elif action == showAlignmentAction:
+            self.app.show_gene_alignment(row)
+        elif action == showAlignmentViewerAction:
+            self.app.show_alignment_viewer(row)
+        return
 
 class FeaturesTable(DataFrameTable):
     """
@@ -398,5 +410,5 @@ class FeaturesTable(DataFrameTable):
         menu = self.menu
         showfeatureAction = menu.addAction("Show Feature")
         action = menu.exec_(self.mapToGlobal(event.pos()))
-        if action == showfeatureAction:            
+        if action == showfeatureAction:
             self.app.show_feature(row)

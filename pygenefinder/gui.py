@@ -96,6 +96,7 @@ class pygenefinderApp(QMainWindow):
         right = QWidget(self.m)
         mainlayout.addWidget(right)
         self.info = QTextEdit(right, readOnly=True)
+        self.info.setStyleSheet("font-family: monospace; font-size: 14px;")
         l = QVBoxLayout(right)
         l.addWidget(self.info)
         self.info.setText("Welcome to pygenefinder")
@@ -141,6 +142,8 @@ class pygenefinderApp(QMainWindow):
         self.file_menu.addAction('&Load Test Files', self.load_test,
                 QtCore.Qt.CTRL + QtCore.Qt.Key_T)
         self.menuBar().addSeparator()
+        self.file_menu.addAction('&New Project', self.new_project,
+                QtCore.Qt.CTRL + QtCore.Qt.Key_N)
         self.file_menu.addAction('&Open Project', self.load_project,
                 QtCore.Qt.CTRL + QtCore.Qt.Key_O)
         self.file_menu.addAction('&Save Project', self.save_project,
@@ -152,11 +155,15 @@ class pygenefinderApp(QMainWindow):
         self.analysis_menu = QMenu('&Analysis', self)
         self.menuBar().addSeparator()
         self.menuBar().addMenu(self.analysis_menu)
-        self.analysis_menu.addAction('&Set Output Folder', self.set_output_folder),
         self.analysis_menu.addAction('&Run',
             lambda: self.run_threaded_process(self.run_gene_finder, self.find_genes_completed))
         self.analysis_menu.addAction('&Annotate',
             lambda: self.run_threaded_process(self.annotate_files, self.annotation_completed))
+
+        self.settings_menu = QMenu('&Settings', self)
+        self.menuBar().addMenu(self.settings_menu)
+        self.settings_menu.addAction('&Set Output Folder', self.set_output_folder)
+        self.settings_menu.addAction('&Add Sequence Database', self.add_sequences_db)
 
         self.help_menu = QMenu('&Help', self)
         self.menuBar().addMenu(self.help_menu)
@@ -170,6 +177,7 @@ class pygenefinderApp(QMainWindow):
         data={}
         data['inputs'] = self.fasta_table.getDataFrame()
         data['sheets'] = self.sheets
+        data['annotations'] = self.annotations
         #data['meta'] = self.saveMeta(table)
         pickle.dump(data, open(filename,'wb'))
         return
@@ -182,6 +190,13 @@ class pygenefinderApp(QMainWindow):
                                                   "","Dxpl Files (*.dexpl);;All files (*.*)",
                                                   options=options)
 
+    def new_project(self):
+        """New project"""
+
+        self.clear_project()
+        self.set_output_folder()
+        return
+
     def load_project(self, filename=None):
         """Load project"""
 
@@ -189,8 +204,11 @@ class pygenefinderApp(QMainWindow):
         self.clear_project()
         data = pickle.load(open(filename,'rb'))
         inputs = data['inputs']
-        if 'sheets' in data:
-            self.sheets = data['sheets']
+        keys = ['sheets','annotations']
+        for k in keys:
+            if k in data:
+                self.__dict__[k] = data[k]
+
         for s in self.sheets:
             self.add_table(s, self.sheets[s])
         ft = self.fasta_table
@@ -224,16 +242,6 @@ class pygenefinderApp(QMainWindow):
             self.tabs.removeTab(i)
         #self.fig.clear()
         #self.canvas.draw()
-        return
-
-    def set_output_folder(self):
-
-        selected_directory = QFileDialog.getExistingDirectory()
-
-        if not dir:
-            return
-        self.outputdir = dir
-        self.outdirvar.set(dir)
         return
 
     def load_test(self):
@@ -345,7 +353,20 @@ class pygenefinderApp(QMainWindow):
         data = df.iloc[row]
         name = data.label
         w = widgets.SeqFeaturesViewer(self)
-        w.show_records(data.genbank)
+        recs = self.annotations[name]
+        w.show_records(recs)
+        return
+
+    def show_gff_file(self):
+        """Show gff file contents"""
+
+        df = self.fasta_table.model.df
+        row = self.fasta_table.getSelectedRows()[0]
+        data = df.iloc[row]
+        name = data.label
+        recs = self.annotations[name]
+        w = widgets.SeqFeaturesViewer(self)
+        w.show_records(recs, format='gff')
         return
 
     def show_feature(self, row):
@@ -375,14 +396,14 @@ class pygenefinderApp(QMainWindow):
                 os.makedirs(self.outputdir)
             outfile = os.path.join(self.outputdir, row.label + '.gbk')
             inputs.loc[i,'genbank'] = outfile
-            if os.path.exists(outfile):
-                msg = 'Genbank file exists, skipping'
+            if row.label in self.annotations:
+                msg = 'Annotation exists, skipping'
                 progress_callback.emit(msg)
                 continue
             progress_callback.emit(row.filename)
-            feats = app.annotate_contigs(row.filename, outfile, threads=kwds['threads'])
-            self.annotations[row.label] = feats
-            progress_callback.emit('Found %s genes' %len(feats))
+            recs = app.annotate_contigs(row.filename, outfile, threads=int(kwds['threads']))
+            self.annotations[row.label] = recs
+            progress_callback.emit('Found %s genes' %len(recs))
             progress_callback.emit('Wrote output to %s' %outfile)
         return
 
@@ -469,38 +490,72 @@ class pygenefinderApp(QMainWindow):
     def get_selected_gene(self):
         """get selected gene"""
 
-        t = self.get_selected_table()
-        row = t.getSelectedRow()
-        df = t.model.df
-        data = df.iloc[row]
-        gene = data.gene
         return
 
-    def show_fasta_sequences(self):
+    def show_fasta_sequences(self, row):
 
         inputs = self.fasta_table.getDataFrame()
         files = inputs.filename
-        t = self.get_selected_table()
-        row = t.getSelectedRow()
-        df = t.model.df
+        index = self.tabs.currentIndex()
+        name = self.tabs.tabText(index)
+        df = self.sheets[name]
         data = df.iloc[row]
         gene = data.gene
 
         seqs = app.get_gene_hits(df, gene, files, db='card')
         print()
         for s in seqs:
-            print(s.format("fasta"))
+            self.info.append(s.format("fasta"))
         return
 
-    def show_gene_alignment(self):
+    def show_gene_alignment(self, row):
 
         inputs = self.fasta_table.getDataFrame()
         files = inputs.filename
-        gene = self.get_selected_gene()
-        seqs = app.get_gene_hits(self.bl, gene, files, db='card')
+        index = self.tabs.currentIndex()
+        name = self.tabs.tabText(index)
+        df = self.sheets[name]
+        data = df.iloc[row]
+        gene = data.gene
+
+        seqs = app.get_gene_hits(df, gene, files, db='card')
         #maaft_alignment(seqfile)
-        print ('alignments for gene: %s' %gene)
-        app.get_alignment(seqs)
+        aln = app.get_alignment(seqs)
+        self.info.append(aln.format('clustal'))
+        return
+
+    def show_alignment_viewer(self, row):
+
+        inputs = self.fasta_table.getDataFrame()
+        files = inputs.filename
+        index = self.tabs.currentIndex()
+        name = self.tabs.tabText(index)
+        df = self.sheets[name]
+        data = df.iloc[row]
+        gene = data.gene
+        seqs = app.get_gene_hits(df, gene, files, db='card')
+        aln = app.get_alignment(seqs)
+        if not hasattr(self,'alignviewer'):
+            self.alignviewer = widgets.AlignmentViewer(self)
+        else:
+            self.alignviewer.show()
+        self.alignviewer.show_alignment(aln, gene)
+        return
+
+    def set_output_folder(self):
+        """Set the output folder"""
+
+        selected_directory = QFileDialog.getExistingDirectory()
+
+        if not dir:
+            return
+        self.outputdir = dir
+        self.outdirvar.set(dir)
+        return
+
+    def add_sequences_db(self):
+        """Add search sequences"""
+
         return
 
     def _check_snap(self):

@@ -14,7 +14,7 @@ setup(
     author = 'Damien Farrell',
     author_email = 'farrell.damien@gmail.com',
     packages = ['pygenefinder'],
-    package_data={'pygenefinder': ['data/*.*',
+    package_data={'pygenefinder': ['data/*.*','logo.png',
                   'description.txt']
                  },
     install_requires=['numpy>=1.10',

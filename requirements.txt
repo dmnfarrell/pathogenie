@@ -4,3 +4,4 @@ biopython
 matplotlib
 future
 pyside2
+bokeh
