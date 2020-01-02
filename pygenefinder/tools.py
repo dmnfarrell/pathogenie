@@ -27,10 +27,9 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
 from Bio import Phylo, AlignIO
-import matplotlib as mpl
+#import matplotlib as mpl
 import pylab as plt
 #import seaborn as sns
-from matplotlib.colors import ListedColormap, LogNorm
 import numpy as np
 import pandas as pd
 
@@ -42,6 +41,7 @@ featurekeys = ['type','protein_id','locus_tag','gene','db_xref',
 
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
+
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_path, relative_path)
 
@@ -505,6 +505,8 @@ def apply_cat(x):
 
 def genes_clustermap(x,xticklabels=0,title=''):
     """plot cluster map of genes"""
+
+    from matplotlib.colors import ListedColormap, LogNorm
     #x = x[x.sum(1)>=1]
     sys.setrecursionlimit(20000)
     clrs = ["lightgray", "blue"]

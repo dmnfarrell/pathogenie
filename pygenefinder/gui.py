@@ -28,7 +28,7 @@ from PySide2 import QtCore
 from PySide2.QtWidgets import *
 from PySide2.QtGui import *
 
-import matplotlib
+#import matplotlib
 import pandas as pd
 import numpy as np
 from . import tools, app, widgets, tables
@@ -49,24 +49,22 @@ class pygenefinderApp(QMainWindow):
         self.create_menu()
         self.main = QSplitter(self)
         screen_resolution = QDesktopWidget().screenGeometry()
-        width, height = screen_resolution.width()*0.7, screen_resolution.height()*.7
+        width, height = screen_resolution.width()*0.75, screen_resolution.height()*.75
         self.setGeometry(QtCore.QRect(200, 200, width, height))
-        center = QDesktopWidget().availableGeometry().center()
+        #center = QDesktopWidget().availableGeometry().center()
 
-        self.filenames = filenames
-        #self.inputs = []
-        self.annotations = {}
-        self.outputdir = os.path.join(home,'amr_results')
-        self.sheets = {}
-        self.annotations = {}
-
-        #self.new_project()
         self.main.setFocus()
         self.setCentralWidget(self.main)
         self.setup_gui()
+        self.new_project()
+
         if project != None:
             self.load_project(project)
         self.threadpool = QtCore.QThreadPool()
+        if project != None:
+            self.load_project(project)
+        else:
+            self.load_test()
         return
 
     def setup_gui(self):
@@ -75,15 +73,14 @@ class pygenefinderApp(QMainWindow):
         self.m = QSplitter(self.main)
         mainlayout = QHBoxLayout(self.m)
         left = QWidget(self.m)
-        mainlayout.addWidget(left)
+        #mainlayout.addWidget(left)
         self.opts = AppOptions(parent=self.m)
         dialog = self.opts.showDialog(left, wrap=2)
 
-        center = QSplitter(self.m, orientation=QtCore.Qt.Vertical)
-        mainlayout.addWidget(center)
+        center = QWidget(self.m)#, orientation=QtCore.Qt.Vertical)
+        #mainlayout.addWidget(center)
         l = QVBoxLayout(center)
         self.fasta_table = tables.FilesTable(center, app=self, dataframe=pd.DataFrame())
-        self.load_test()
         l.addWidget(self.fasta_table)
         self.fasta_table.setColumnWidth(0,200)
         self.fasta_table.setColumnWidth(1,400)
@@ -91,25 +88,27 @@ class pygenefinderApp(QMainWindow):
         self.tabs = QTabWidget(center)
         self.tabs.setTabsClosable(True)
         self.tabs.tabCloseRequested.connect(self.close_tab)
+        l.addWidget(self.tabs)
 
-        center.setSizes([50,100])
+        #center.setSizes([50,100])
         right = QWidget(self.m)
-        mainlayout.addWidget(right)
+        #mainlayout.addWidget(right)
         self.info = QTextEdit(right, readOnly=True)
         self.info.setStyleSheet("font-family: monospace; font-size: 14px;")
-        l = QVBoxLayout(right)
-        l.addWidget(self.info)
+        l2 = QVBoxLayout(right)
+        l2.addWidget(self.info)
         self.info.setText("Welcome to pygenefinder")
-        self.m.setSizes([45,200,100])
+        self.m.setSizes([45,200,150])
 
         self.statusBar = QStatusBar()
         from . import __version__
         self.statusLabel = QLabel("pygenefinder %s" %__version__)
         self.statusBar.addWidget(self.statusLabel, 1)
+        self.outdirLabel = QLabel("")
+        self.statusBar.addWidget(self.outdirLabel, 1)
         self.progressbar = QProgressBar()
         self.progressbar.setRange(0,1)
         self.statusBar.addWidget(self.progressbar, 2)
-        #self.progressbar.setValue(10)
         self.setStatusBar(self.statusBar)
         return
 
@@ -137,14 +136,14 @@ class pygenefinderApp(QMainWindow):
         self.file_menu = QMenu('&File', self)
         #self.file_menu.addAction('&New', self.newProject,
         #        QtCore.Qt.CTRL + QtCore.Qt.Key_N)
-        self.file_menu.addAction('&Load Fasta Files', self.load_fasta_files_dialog,
+        self.file_menu.addAction('&Add Fasta Files', self.load_fasta_files_dialog,
                 QtCore.Qt.CTRL + QtCore.Qt.Key_F)
         self.file_menu.addAction('&Load Test Files', self.load_test,
                 QtCore.Qt.CTRL + QtCore.Qt.Key_T)
         self.menuBar().addSeparator()
         self.file_menu.addAction('&New Project', self.new_project,
                 QtCore.Qt.CTRL + QtCore.Qt.Key_N)
-        self.file_menu.addAction('&Open Project', self.load_project,
+        self.file_menu.addAction('&Open Project', self.load_project_dialog,
                 QtCore.Qt.CTRL + QtCore.Qt.Key_O)
         self.file_menu.addAction('&Save Project', self.save_project,
                 QtCore.Qt.CTRL + QtCore.Qt.Key_S)
@@ -178,6 +177,7 @@ class pygenefinderApp(QMainWindow):
         data['inputs'] = self.fasta_table.getDataFrame()
         data['sheets'] = self.sheets
         data['annotations'] = self.annotations
+        data['outputdir'] = self.outputdir
         #data['meta'] = self.saveMeta(table)
         pickle.dump(data, open(filename,'wb'))
         return
@@ -194,17 +194,32 @@ class pygenefinderApp(QMainWindow):
         """New project"""
 
         self.clear_project()
-        self.set_output_folder()
+        #self.set_output_folder()
+
+        return
+
+    def clear_project(self):
+        """Clear all loaded inputs and results"""
+
+        self.annotations = {}
+        self.outputdir = None
+        self.sheets = {}
+        self.proj_file = None
+        self.fasta_table.setDataFrame(pd.DataFrame({'name':[]}))
+        self.tabs.clear()
+        #for i in range(self.tabs.count()):
+        #    self.tabs.removeTab(i)
+        self.outdirLabel.setText(self.outputdir)
         return
 
     def load_project(self, filename=None):
         """Load project"""
 
-        filename='test.pygf'
+        filename = 'test.pygf'
         self.clear_project()
         data = pickle.load(open(filename,'rb'))
         inputs = data['inputs']
-        keys = ['sheets','annotations']
+        keys = ['sheets','annotations','outputdir']
         for k in keys:
             if k in data:
                 self.__dict__[k] = data[k]
@@ -213,17 +228,16 @@ class pygenefinderApp(QMainWindow):
             self.add_table(s, self.sheets[s])
         ft = self.fasta_table
         ft.setDataFrame(inputs)
-
-        #self.fasta_table.redraw()
-        self.filename = filename
-        #self.main.title('pygenefinder: %s' %filename)
+        ft.resizeColumns()
+        self.proj_file = filename
+        self.outdirLabel.setText(self.outputdir)
         return
 
     def load_project_dialog(self):
         """Load project"""
 
-        filename, _ = QFileDialog.getOpenFileName(self, 'Open File', './',
-                                        filter="All Files(*.*);;Fasta Files(*.fa)")
+        filename, _ = QFileDialog.getOpenFileName(self, 'Open Project', './',
+                                        filter="Project Files(*.pygf);;All Files(*.*)")
         if not filename:
             return
         if not os.path.exists(filename):
@@ -231,45 +245,31 @@ class pygenefinderApp(QMainWindow):
         self.load_project(filename)
         return
 
-    def clear_project(self):
-        """Clear all loaded inputs and results"""
-
-        #self.inputs=[]
-        self.fasta_table.df = pd.DataFrame()
-        self.fasta_table.refresh()
-        self.sheets={}
-        for i in range(self.tabs.count()):
-            self.tabs.removeTab(i)
-        #self.fig.clear()
-        #self.canvas.draw()
-        return
-
     def load_test(self):
         """Load test_files"""
 
-        files = glob.glob(os.path.join(app.datadir, '*.fa'))
-        self.filenames = files
-        #self.clear_project()
-        self.load_fasta_table()
-        return
-
-    def load_fasta_table(self):
-        """Load fasta inputs into table"""
-
-        if self.filenames is None or len(self.filenames) == 0:
-            return
-        names = [os.path.splitext(os.path.basename(i))[0] for i in self.filenames]
-        df = pd.DataFrame({'label':names,'filename':self.filenames})
-        self.fasta_table.setDataFrame(df)
-        return
-
-    def load_fasta_files(self, filenames=None):
-        """Load fasta files"""
-
-        #self.filenames = filenames
-        self.filenames = ['test_files/RF15A.fa','test_files/RF15B.fa']
-        self.load_fasta_table()
+        if self.proj_file != None:
+            reply = QMessageBox.question(self, 'Confirm', "This will remove the current project.\nAre you sure?",
+                                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.No:
+                return
         self.clear_project()
+        filenames = glob.glob(os.path.join(app.datadir, '*.fa'))
+        self.load_fasta_table(filenames)
+        return
+
+    def load_fasta_table(self, filenames):
+        """Append/Load fasta inputs into table"""
+
+        if filenames is None or len(filenames) == 0:
+            return
+        names = [os.path.splitext(os.path.basename(i))[0] for i in filenames]
+        new = pd.DataFrame({'label':names,'filename':filenames})
+        df = self.fasta_table.model.df
+        if len(df)>0:
+            new = pd.concat([df,new],sort=False)
+        self.fasta_table.setDataFrame(new)
+        self.fasta_table.resizeColumns()
         return
 
     def load_fasta_files_dialog(self):
@@ -277,10 +277,13 @@ class pygenefinderApp(QMainWindow):
 
         options = QFileDialog.Options()
         filenames, _ = QFileDialog.getOpenFileNames(self, 'Open File', './',
-                                                    filter="All Files(*.*);;Fasta Files(*.fa)")
+                                                    filter="Fasta Files(*.fa *.fna *.fasta);;All Files(*.*)")
         if not filenames:
             return
-        self.load_fasta_files(filenames)
+        #reply = QMessageBox.question(self, 'Add Files', "Append or overwrite?",
+        #                            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        #if reply == QMessageBox.Yes:
+        self.load_fasta_table(filenames)
         return
 
     def add_table(self, name, df, kind='results'):
@@ -339,6 +342,11 @@ class pygenefinderApp(QMainWindow):
         row = self.fasta_table.getSelectedRows()[0]
         data = df.iloc[row]
         name = data.label
+        if name not in self.annotations:
+            self.info.append('no annotation for this file')
+            return
+        recs = self.annotations[name]
+
         if name in self.sheets:
             return
         featsdf = tools.genbank_to_dataframe(data.genbank)
@@ -352,6 +360,9 @@ class pygenefinderApp(QMainWindow):
         row = self.fasta_table.getSelectedRows()[0]
         data = df.iloc[row]
         name = data.label
+        if name not in self.annotations:
+            self.info.append('no annotation for this file')
+            return
         w = widgets.SeqFeaturesViewer(self)
         recs = self.annotations[name]
         w.show_records(recs)
@@ -402,6 +413,7 @@ class pygenefinderApp(QMainWindow):
                 continue
             progress_callback.emit(row.filename)
             recs = app.annotate_contigs(row.filename, outfile, threads=int(kwds['threads']))
+            self.fasta_table.refresh()
             self.annotations[row.label] = recs
             progress_callback.emit('Found %s genes' %len(recs))
             progress_callback.emit('Wrote output to %s' %outfile)
@@ -487,10 +499,10 @@ class pygenefinderApp(QMainWindow):
         self.info.verticalScrollBar().setValue(1)
         return
 
-    def get_selected_gene(self):
+    def get_selected_gene(self, row):
         """get selected gene"""
 
-        return
+        return data
 
     def show_fasta_sequences(self, row):
 
@@ -501,10 +513,22 @@ class pygenefinderApp(QMainWindow):
         df = self.sheets[name]
         data = df.iloc[row]
         gene = data.gene
-
-        seqs = app.get_gene_hits(df, gene, files, db='card')
-        print()
+        seqs = app.get_gene_hits(df, gene, files, db=name)
         for s in seqs:
+            self.info.append(s.format("fasta"))
+        return
+
+    def show_protein_sequences(self, row):
+        inputs = self.fasta_table.getDataFrame()
+        files = inputs.filename
+        index = self.tabs.currentIndex()
+        name = self.tabs.tabText(index)
+        df = self.sheets[name]
+        data = df.iloc[row]
+        gene = data.gene
+        seqs = app.get_gene_hits(df, gene, files, db=name)
+        prots = [s.translate() for s in seqs]
+        for s in prots:
             self.info.append(s.format("fasta"))
         return
 
@@ -517,11 +541,19 @@ class pygenefinderApp(QMainWindow):
         df = self.sheets[name]
         data = df.iloc[row]
         gene = data.gene
-
-        seqs = app.get_gene_hits(df, gene, files, db='card')
+        seqs = app.get_gene_hits(df, gene, files, db=name)
         #maaft_alignment(seqfile)
         aln = app.get_alignment(seqs)
         self.info.append(aln.format('clustal'))
+        return aln, gene
+
+    def save_gene_alignment(self, row):
+
+        aln, gene = self.show_gene_alignment(row)
+        from Bio import AlignIO
+        fname = os.path.join(self.outputdir,'%s.aln' %gene)
+        AlignIO.write(aln,fname,'clustal')
+        self.info.append('alignment saved to %s' %fname)
         return
 
     def show_alignment_viewer(self, row):
@@ -533,7 +565,7 @@ class pygenefinderApp(QMainWindow):
         df = self.sheets[name]
         data = df.iloc[row]
         gene = data.gene
-        seqs = app.get_gene_hits(df, gene, files, db='card')
+        seqs = app.get_gene_hits(df, gene, files, db=name)
         aln = app.get_alignment(seqs)
         if not hasattr(self,'alignviewer'):
             self.alignviewer = widgets.AlignmentViewer(self)
@@ -546,11 +578,10 @@ class pygenefinderApp(QMainWindow):
         """Set the output folder"""
 
         selected_directory = QFileDialog.getExistingDirectory()
-
-        if not dir:
-            return
-        self.outputdir = dir
-        self.outdirvar.set(dir)
+        if selected_directory:
+            self.outputdir = selected_directory
+        #check it's empty?
+        self.outdirLabel.setText(self.outputdir)
         return
 
     def add_sequences_db(self):

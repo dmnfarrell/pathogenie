@@ -26,7 +26,7 @@ class App(QMainWindow):
         center = QSplitter(self.main)
         self.setCentralWidget(self.main)
         mainlayout.addWidget(center)
-        l = QVBoxLayout(center)
+        #l = QVBoxLayout(center)
 
         self.tabs = QTabWidget(center)
         self.tabs.setTabsClosable(True)
@@ -52,11 +52,13 @@ class App(QMainWindow):
         path = os.path.abspath('test.html')
         webview.load( QtCore.QUrl.fromLocalFile(path) )
         self.tabs.addTab(webview,'feats')
-        
+
         webview = QWebEngineView()
         path = os.path.abspath('seqs.html')
         webview.load( QtCore.QUrl.fromLocalFile(path) )
         self.tabs.addTab(webview,'seqs')
+        self.info = QPlainTextEdit(center)
+
         return
 
     def show_tests(self):

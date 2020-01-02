@@ -271,7 +271,7 @@ class DataFrameTable(QTableView):
         return
 
     def refresh(self):
-        print ('refresh')
+
         self.model.beginResetModel()
         self.model.dataChanged.emit(0,0)
         self.model.endResetModel()
@@ -344,15 +344,18 @@ class FilesTable(DataFrameTable):
         DataFrameTable.__init__(self)
         self.app = app
         self.setWordWrap(False)
+        header = self.horizontalHeader()
+        #header.setResizeMode(QHeaderView.ResizeToContents)
 
     def addActions(self, event, row):
 
         menu = self.menu
         fileinfoAction = menu.addAction("File Summary")
-        annotateAction = menu.addAction("Annotate")
+        #annotateAction = menu.addAction("Annotate")
         showFeaturesAction = menu.addAction("Show Feature Table")
         showGenbankAction = menu.addAction("Show Genbank File")
         showGFFAction = menu.addAction("Show GFF File")
+        removeAction = menu.addAction("Remove Selected")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         # Map the logical row index to a real index for the source model
         #model = self.model
@@ -360,8 +363,7 @@ class FilesTable(DataFrameTable):
         if action == fileinfoAction:
             #print (row)
             self.app.show_file_info(row)
-        elif action == annotateAction:
-            print (row)
+        #elif action == annotateAction:
             #self.app.annotate_files()
             #lambda: self.run_threaded_process(self.annotate_files, self.annotation_completed))
         elif action == showFeaturesAction:
@@ -370,6 +372,13 @@ class FilesTable(DataFrameTable):
             self.app.show_genbank_file()
         elif action == showGFFAction:
             self.app.show_gff_file()
+
+    def refresh(self):
+        DataFrameTable.refresh(self)
+
+    def resizeColumns(self):
+        self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
 
 class ResultsTable(DataFrameTable):
     """
@@ -384,15 +393,16 @@ class ResultsTable(DataFrameTable):
 
         menu = self.menu
         showSequencesAction = menu.addAction("Show sequences")
+        showProteinSeqAction = menu.addAction("Show protein sequence")
         showAlignmentAction = menu.addAction("Show gene alignment")
-        showAlignmentViewerAction = menu.addAction("Show alignment in viewer")
+        #showAlignmentViewerAction = menu.addAction("Show alignment in viewer")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showSequencesAction:
             self.app.show_fasta_sequences(row)
         elif action == showAlignmentAction:
             self.app.show_gene_alignment(row)
-        elif action == showAlignmentViewerAction:
-            self.app.show_alignment_viewer(row)
+        elif action == showProteinSeqAction:
+            self.app.show_protein_sequences(row)
         return
 
 class FeaturesTable(DataFrameTable):
