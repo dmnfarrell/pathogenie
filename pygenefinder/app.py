@@ -260,6 +260,7 @@ def annotate_contigs(infile, outfile=None, **kwargs):
     df[['start','end','strand']] = df.description.apply(get_prodigal_coords,1)
     #merge blast result with prodigal fasta file info
     df = df.merge(bl,left_on='name',right_on='qseqid',how='left')
+    #get simple name for contig
     df['contig'] = df['name'].apply(lambda x: x[:6])
 
     def get_contig(x):

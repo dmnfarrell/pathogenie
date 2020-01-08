@@ -393,16 +393,16 @@ class ResultsTable(DataFrameTable):
 
         menu = self.menu
         showSequencesAction = menu.addAction("Show sequences")
-        showProteinSeqAction = menu.addAction("Show protein sequence")
-        showAlignmentAction = menu.addAction("Show gene alignment")
+        #showProteinSeqAction = menu.addAction("Protein sequences")
+        showAlignmentAction = menu.addAction("Alignment for gene")
         #showAlignmentViewerAction = menu.addAction("Show alignment in viewer")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showSequencesAction:
             self.app.show_fasta_sequences(row)
         elif action == showAlignmentAction:
             self.app.show_gene_alignment(row)
-        elif action == showProteinSeqAction:
-            self.app.show_protein_sequences(row)
+        #elif action == showProteinSeqAction:
+        #    self.app.show_protein_sequences(row)
         return
 
 class FeaturesTable(DataFrameTable):
@@ -418,7 +418,7 @@ class FeaturesTable(DataFrameTable):
     def addActions(self, event, row):
 
         menu = self.menu
-        showfeatureAction = menu.addAction("Show Feature")
+        showfeatureAction = menu.addAction("Show Feature")        
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showfeatureAction:
             self.app.show_feature(row)
