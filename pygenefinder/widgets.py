@@ -75,7 +75,7 @@ def dialogFromOptions(parent, opts, sections=None,
         row=1
         col=1
         f = QWidget()
-        f.resize(50,100)
+        #f.resize(50,100)
         f.sizeHint()
         l.addWidget(f,1,scol)
         gl = QGridLayout(f)

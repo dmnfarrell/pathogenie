@@ -45,7 +45,9 @@ prokka_db_names = ['sprot','IS','AMR']
 links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequences',
         'resfinder':'https://raw.githubusercontent.com/tseemann/abricate/master/db/resfinder/sequences',
         'vfdb':'https://raw.githubusercontent.com/tseemann/abricate/master/db/vfdb/sequences',
-        'sprot':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/sprot'}
+        'ncbi':'https://raw.githubusercontent.com/tseemann/abricate/master/db/ncbi/sequences',
+        'sprot':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/sprot',
+        'bacteria.16SrRNA': 'ftp://ftp.ncbi.nlm.nih.gov/refseq/TargetedLoci/Bacteria/bacteria.16SrRNA.fna.gz'}
 
 if not os.path.exists(config_path):
     try:
@@ -53,7 +55,7 @@ if not os.path.exists(config_path):
     except:
         os.makedirs(config_path)
 
-db_names = ['card','resfinder','argannot','ncbi','plasmidfinder','ecoh','vfdb']
+db_names = ['card','resfinder','argannot','ncbi','plasmidfinder','ecoh','vfdb','bacteria.16SrRNA']
 
 def check_databases():
     """download databases"""
@@ -61,7 +63,6 @@ def check_databases():
     print ('checking databases')
     os.makedirs(dbdir, exist_ok=True)
     for name in db_names:
-        #print (name)
         fetch_sequence_from_url(name)
     return
 
@@ -78,8 +79,11 @@ def fetch_sequence_from_url(name='card', path=None):
     else:
         print('no such name')
         return
-
-    filename = os.path.join(path,"%s.fa" %name)
+    ext='fa'
+    if os.path.splitext(url)[1] == '.gz':
+        ext='fa.gz'
+    filename = os.path.join(path,"%s.%s" %(name,ext))
+    print (filename)
     if not os.path.exists(filename):
         urllib.request.urlretrieve(url, filename)
     return

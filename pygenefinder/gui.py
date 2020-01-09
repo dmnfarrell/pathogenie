@@ -98,7 +98,7 @@ class pygenefinderApp(QMainWindow):
         l2 = QVBoxLayout(right)
         l2.addWidget(self.info)
         self.info.setText("Welcome to pygenefinder")
-        self.m.setSizes([45,200,150])
+        self.m.setSizes([50,200,150])
 
         self.statusBar = QStatusBar()
         from . import __version__
