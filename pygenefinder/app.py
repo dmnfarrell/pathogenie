@@ -46,8 +46,12 @@ links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequenc
         'resfinder':'https://raw.githubusercontent.com/tseemann/abricate/master/db/resfinder/sequences',
         'vfdb':'https://raw.githubusercontent.com/tseemann/abricate/master/db/vfdb/sequences',
         'ncbi':'https://raw.githubusercontent.com/tseemann/abricate/master/db/ncbi/sequences',
+        'argannot':'https://raw.githubusercontent.com/tseemann/abricate/master/db/argannot/sequences',
+        'ecoh':'https://raw.githubusercontent.com/tseemann/abricate/master/db/ecoh/sequences',
+        'plasmidfinder':'https://raw.githubusercontent.com/tseemann/abricate/master/db/plasmidfinder/sequences',
         'sprot':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/sprot',
-        'bacteria.16SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.16SrRNA.fna'}
+        'bacteria.16SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.16SrRNA.fna',
+        'bacteria.23SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.23SrRNA.fna'}
 
 if not os.path.exists(config_path):
     try:
@@ -55,7 +59,7 @@ if not os.path.exists(config_path):
     except:
         os.makedirs(config_path)
 
-db_names = ['card','resfinder','argannot','ncbi','plasmidfinder','ecoh','vfdb','bacteria.16SrRNA']
+db_names = ['card','resfinder','argannot','ncbi','plasmidfinder','ecoh','vfdb','bacteria.16SrRNA','bacteria.23SrRNA']
 
 def check_databases():
     """download databases"""
@@ -85,7 +89,10 @@ def fetch_sequence_from_url(name='card', path=None):
     filename = os.path.join(path,"%s.%s" %(name,ext))
     #print (filename)
     if not os.path.exists(filename):
-        urllib.request.urlretrieve(url, filename)
+        try:
+            urllib.request.urlretrieve(url, filename)
+        except:
+            print ('no such URL?')
     return
 
 def make_target_database(filenames):

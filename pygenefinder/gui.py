@@ -71,12 +71,12 @@ class pygenefinderApp(QMainWindow):
         """Add all GUI elements"""
 
         self.m = QSplitter(self.main)
-        mainlayout = QHBoxLayout(self.m)
+        #mainlayout = QHBoxLayout(self.m)
         left = QWidget(self.m)
         #mainlayout.addWidget(left)
         self.opts = AppOptions(parent=self.m)
         dialog = self.opts.showDialog(left, wrap=2)
-
+        left.setFixedWidth(240)
         center = QWidget(self.m)#, orientation=QtCore.Qt.Vertical)
         #mainlayout.addWidget(center)
         l = QVBoxLayout(center)
@@ -90,7 +90,6 @@ class pygenefinderApp(QMainWindow):
         self.tabs.tabCloseRequested.connect(self.close_tab)
         l.addWidget(self.tabs)
 
-        #center.setSizes([50,100])
         right = QWidget(self.m)
         #mainlayout.addWidget(right)
         self.info = QTextEdit(right, readOnly=True)
@@ -99,6 +98,7 @@ class pygenefinderApp(QMainWindow):
         l2.addWidget(self.info)
         self.info.setText("Welcome to pygenefinder")
         self.m.setSizes([50,200,150])
+        self.m.setStretchFactor(1,0)
 
         self.statusBar = QStatusBar()
         from . import __version__
@@ -154,9 +154,9 @@ class pygenefinderApp(QMainWindow):
         self.analysis_menu = QMenu('&Analysis', self)
         self.menuBar().addSeparator()
         self.menuBar().addMenu(self.analysis_menu)
-        self.analysis_menu.addAction('&Run',
+        self.analysis_menu.addAction('&Run Blast',
             lambda: self.run_threaded_process(self.run_gene_finder, self.find_genes_completed))
-        self.analysis_menu.addAction('&Annotate',
+        self.analysis_menu.addAction('&Annotate Selected',
             lambda: self.run_threaded_process(self.annotate_files, self.annotation_completed))
 
         self.settings_menu = QMenu('&Settings', self)
