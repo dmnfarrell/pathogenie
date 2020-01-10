@@ -47,7 +47,7 @@ links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequenc
         'vfdb':'https://raw.githubusercontent.com/tseemann/abricate/master/db/vfdb/sequences',
         'ncbi':'https://raw.githubusercontent.com/tseemann/abricate/master/db/ncbi/sequences',
         'sprot':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/sprot',
-        'bacteria.16SrRNA': 'ftp://ftp.ncbi.nlm.nih.gov/refseq/TargetedLoci/Bacteria/bacteria.16SrRNA.fna.gz'}
+        'bacteria.16SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.16SrRNA.fna'}
 
 if not os.path.exists(config_path):
     try:
@@ -80,10 +80,10 @@ def fetch_sequence_from_url(name='card', path=None):
         print('no such name')
         return
     ext='fa'
-    if os.path.splitext(url)[1] == '.gz':
-        ext='fa.gz'
+    #if os.path.splitext(url)[1] == '.gz':
+    #    ext='fa.gz'
     filename = os.path.join(path,"%s.%s" %(name,ext))
-    print (filename)
+    #print (filename)
     if not os.path.exists(filename):
         urllib.request.urlretrieve(url, filename)
     return
@@ -103,15 +103,15 @@ def make_target_database(filenames):
     tools.make_blast_database(targfile)
     return
 
-def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False, **kwds):
+def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False, threads=2, **kwds):
     """Find ref genes by blasting the target sequences"""
 
     path = os.path.join(dbdir,'%s.fa' %ref)
     #the AMR db is the query for the blast
     queryseqs = list(SeqIO.parse(path,'fasta'))
     print ('blasting %s sequences' %len(queryseqs))
-    bl = tools.blast_sequences(target, queryseqs, maxseqs=100, evalue=.1,
-                               cmd='blastn', show_cmd=True)
+    bl = tools.blast_sequences(target, queryseqs, maxseqs=1, evalue=.01,
+                               cmd='blastn', show_cmd=True, threads=int(threads))
 
     bl['qlength'] = bl.sequence.str.len()
     bl['coverage'] = bl.length/bl.qlength*100
@@ -120,16 +120,22 @@ def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False, **kw
     bl['filename'] = bl.sseqid.apply(lambda x: x.split('~')[0],1)
     bl['id'] = bl.filename.apply(lambda x: os.path.basename(x),1)
     bl['contig'] = bl.sseqid.apply(lambda x: x.split('~')[1],1)
-    bl['gene'] = bl['qseqid'].apply(lambda x: x.split('~~~')[1],1)
+    try:
+        bl['gene'] = bl['qseqid'].apply(lambda x: x.split('~~~')[1],1)
+    except:
+        bl['gene'] = bl.qseqid
 
     #remove exact and close duplicates
-    bl = bl.sort_values(['coverage','pident'], ascending=False).drop_duplicates(['contig','sstart','send'])
+    print (len(bl))
+    bl = bl.sort_values(['bitscore'], ascending=False).drop_duplicates(['contig','sstart','send'])
+    print (len(bl))
     if duplicates == False:
-        dist = 40
-        bl=bl.sort_values(by=["contig","sstart"])
-        unique = bl.sstart.diff().fillna(dist)
+        dist = 20
+        x=bl.sort_values(by=["contig","sstart"],ascending=False)
+        #print (x[:15][x.columns[:5]])
+        unique = x.sstart.diff().abs().fillna(dist)
         bl = bl[unique>=dist]
-    cols = ['gene','id','qseqid','pident','coverage','sstart','send','contig','filename']
+    cols = ['gene','id','qseqid','pident','coverage','sstart','send','contig','description','filename','bitscore']
     bl = bl[cols]
     return bl
 
