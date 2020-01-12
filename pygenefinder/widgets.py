@@ -290,9 +290,9 @@ class SeqFeaturesViewer(QDialog):
         #self.setCentralWidget(ed)
         l = QVBoxLayout(self)
         self.setLayout(l)
-        w = self.recselect = QComboBox()
-        l.addWidget(QLabel('contig'))
-        l.addWidget(w)
+        #w = self.recselect = QComboBox()
+        #l.addWidget(QLabel('contig'))
+        #l.addWidget(w)
         l.addWidget(ed)
         self.show()
 

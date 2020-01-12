@@ -49,14 +49,17 @@ class pygenefinderApp(QMainWindow):
         self.create_menu()
         self.main = QSplitter(self)
         screen_resolution = QDesktopWidget().screenGeometry()
-        width, height = screen_resolution.width()*0.75, screen_resolution.height()*.75
+        if screen_resolution.width() > 1200:
+            fac=.75
+        else:
+            fac=1
+        width, height = screen_resolution.width()*fac, screen_resolution.height()*fac
         self.setGeometry(QtCore.QRect(200, 200, width, height))
-        #center = QDesktopWidget().availableGeometry().center()
 
         self.main.setFocus()
         self.setCentralWidget(self.main)
         self.setup_gui()
-        self.new_project()
+        #self.new_project()
 
         if project != None:
             self.load_project(project)
@@ -158,6 +161,7 @@ class pygenefinderApp(QMainWindow):
             lambda: self.run_threaded_process(self.run_gene_finder, self.find_genes_completed))
         self.analysis_menu.addAction('&Annotate Selected',
             lambda: self.run_threaded_process(self.annotate_files, self.annotation_completed))
+        self.analysis_menu.addAction('&Gene Presence/Absence Matrix', self.show_gene_matrix)
 
         self.settings_menu = QMenu('&Settings', self)
         self.menuBar().addMenu(self.settings_menu)
@@ -194,7 +198,7 @@ class pygenefinderApp(QMainWindow):
         """New project"""
 
         self.clear_project()
-        #self.set_output_folder()
+        self.set_output_folder()
 
         return
 
@@ -263,11 +267,12 @@ class pygenefinderApp(QMainWindow):
 
         if filenames is None or len(filenames) == 0:
             return
-        names = [os.path.splitext(os.path.basename(i))[0] for i in filenames]
-        new = pd.DataFrame({'label':names,'filename':filenames})
+        #names = [os.path.splitext(os.path.basename(i))[0] for i in filenames]
+        info = [tools.get_fasta_info(f) for f in filenames]
+        new = pd.DataFrame(info)
         df = self.fasta_table.model.df
         if len(df)>0:
-            new = pd.concat([df,new],sort=False)
+            new = pd.concat([df,new],sort=False).reset_index(drop=True)
         self.fasta_table.setDataFrame(new)
         self.fasta_table.resizeColumns()
         return
@@ -335,6 +340,32 @@ class pygenefinderApp(QMainWindow):
             ed.text.insert(END, s.format("fasta"))
         return
 
+    def show_gene_matrix(self):
+        """Presence/absence matrix of gene features across samples"""
+
+        recs = self.annotations
+        x = []
+        for name in self.annotations:
+            recs = self.annotations[name]
+            featsdf = tools.records_to_dataframe(recs)
+            featsdf['sample'] = name
+            x.append(featsdf)
+        x = pd.concat(x)
+        x.pivot_table
+        m = pd.pivot_table(x, index='sample', columns=['gene','product'], values='start')
+        m[m.notnull()] = 1
+        m = m.fillna(0)
+        m = m.T.reset_index()
+        self.add_table('gene matrix', m)
+        self.feature_matrix = m
+        return
+
+    def plot_gene_matrix(self):
+
+        m = self.feature_matrix
+
+        return
+
     def show_feature_table(self):
         """Show features for input file in table"""
 
@@ -349,7 +380,8 @@ class pygenefinderApp(QMainWindow):
 
         if name in self.sheets:
             return
-        featsdf = tools.genbank_to_dataframe(data.genbank)
+        #featsdf = tools.genbank_to_dataframe(data.genbank)
+        featsdf = tools.records_to_dataframe(recs)
         self.add_table(name, featsdf, kind='features')
         return
 
@@ -393,6 +425,7 @@ class pygenefinderApp(QMainWindow):
         """Run gene annotation for input files.
         progress_callback: signal"""
 
+        self.running = True
         self.opts.applyOptions()
         kwds = self.opts.kwds
         #self.inputs = self.fasta_table.getDataFrame()
@@ -412,7 +445,7 @@ class pygenefinderApp(QMainWindow):
                 progress_callback.emit(msg)
                 continue
             progress_callback.emit(row.filename)
-            recs = app.annotate_contigs(row.filename, outfile, threads=int(kwds['threads']))
+            fdf,recs = app.annotate_contigs(row.filename, outfile, threads=int(kwds['threads']))
             self.fasta_table.refresh()
             self.annotations[row.label] = recs
             progress_callback.emit('Found %s genes' %len(recs))
@@ -426,6 +459,7 @@ class pygenefinderApp(QMainWindow):
         self.progressbar.setRange(0,1)
         df = self.fasta_table.getDataFrame()
         self.fasta_table.refresh()
+        self.running = False
         return
 
     def run_gene_finder(self, progress_callback):

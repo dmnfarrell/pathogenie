@@ -142,7 +142,7 @@ def save_gff(recs, outfile):
         GFF.write([recs[r]], f)
     return
 
-def features_to_dataframe(features, cds=False):
+def features_to_dataframe(features, cds=False, id=''):
     """Get features from a biopython seq record object into a dataframe
     Args:
         features: bio seqfeatures
@@ -159,7 +159,7 @@ def features_to_dataframe(features, cds=False):
         d['start'] = f.location.start
         d['end'] = f.location.end
         d['strand'] = f.location.strand
-        d['id'] = f.id
+        d['id'] = id
         for i in quals:
             if i in x:
                 if type(x[i]) is list:
@@ -176,6 +176,16 @@ def features_to_dataframe(features, cds=False):
         print ('ERROR: genbank file return empty data, check that the file contains protein sequences '\
                'in the translation qualifier of each protein feature.' )
     return df
+
+def records_to_dataframe(recs):
+    """Convert multiple seqrecords features to dataframe"""
+
+    res=[]
+    for rec in recs:
+        df = features_to_dataframe(rec.features, id=rec.id)
+        res.append(df)
+    res=pd.concat(res)
+    return res
 
 def fasta_to_dataframe(infile, header_sep=None, key='name', seqkey='sequence'):
     """Get fasta proteins into dataframe"""
@@ -195,7 +205,8 @@ def get_fasta_info(filename):
     """Get fasta file info"""
 
     df = fasta_to_dataframe(filename)
-    d = {'filename':filename, 'contigs':len(df)}
+    name = os.path.splitext(os.path.basename(filename))[0]
+    d = {'label':name,'filename':filename, 'contigs':len(df)}
     return d
 
 def make_blast_database(filename, dbtype='nucl'):

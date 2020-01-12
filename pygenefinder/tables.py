@@ -66,6 +66,7 @@ class DataFrameTable(QTableView):
         vh = self.verticalHeader()
         vh.setVisible(True)
         hh = self.horizontalHeader()
+        hh.setVisible(True)
         #hh.setStretchLastSection(True)
         hh.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         hh.customContextMenuRequested.connect(self.columnHeaderMenu)
@@ -418,7 +419,7 @@ class FeaturesTable(DataFrameTable):
     def addActions(self, event, row):
 
         menu = self.menu
-        showfeatureAction = menu.addAction("Show Feature")        
+        showfeatureAction = menu.addAction("Show Feature")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showfeatureAction:
             self.app.show_feature(row)

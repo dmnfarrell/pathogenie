@@ -98,7 +98,9 @@ def fetch_sequence_from_url(name='card', path=None):
 def make_target_database(filenames):
     """Make blast db from multiple input files"""
 
-    rec=[]
+    rec=[]    
+    if filenames is str:
+        filenames = [filenames]
     for n in filenames:
         seqs = list(SeqIO.parse(n,'fasta'))
         for s in seqs:
@@ -108,7 +110,7 @@ def make_target_database(filenames):
     targfile = os.path.join(tempdir, 'targets.fasta')
     SeqIO.write(rec, targfile, 'fasta')
     tools.make_blast_database(targfile)
-    return
+    return targfile
 
 def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False, threads=2, **kwds):
     """Find ref genes by blasting the target sequences"""
@@ -225,10 +227,11 @@ def prodigal(infile):
     cmd = 'prodigal'
     if getattr(sys, 'frozen', False):
         cmd = tools.resource_path('bin/prodigal.exe')
-    name = os.path.splitext(infile)[0]
-    cmd = '{c} -i {n}.fa -a {n}.faa -f gff -o {n}.gff -p single'.format(c=cmd,n=name)
+    #name = os.path.splitext(infile)[0]
+    name = os.path.join(tempdir,'prodigal')
+    cmd = '{c} -i {i} -a {n}.faa -f gff -o {n}.gff -p single'.format(i=infile,c=cmd,n=name)
     subprocess.check_output(cmd, shell=True)
-    resfile = name+'.faa'
+    resfile = os.path.join(tempdir, 'prodigal.faa')
     return resfile
 
 def get_prodigal_coords(x):
@@ -254,34 +257,32 @@ def annotate_contigs(infile, outfile=None, **kwargs):
 
     #run prodigal
     resfile = prodigal(infile)
-    print (resfile)
     #get target seqs
     seqs = list(SeqIO.parse(resfile,'fasta'))
     #make blast db of prokka proteins
     dbname = os.path.join(prokkadbdir,'sprot.fa')
     tools.make_blast_database(dbname, dbtype='prot')
     print ('blasting ORFS to uniprot sequences')
-    bl = tools.blast_sequences(dbname, seqs, maxseqs=100, evalue=.01,
+    bl = tools.blast_sequences(dbname, seqs, maxseqs=1, evalue=1e-3,
                                 cmd='blastp', show_cmd=True, **kwargs)
 
     bl[['protein_id','gene','product','cog']] = bl.stitle.apply(prokka_header_info,1)
 
     cols = ['qseqid','sseqid','pident','sstart','send','protein_id','gene','product']
     bl = bl.sort_values(['qseqid','pident'], ascending=False).drop_duplicates(['qseqid'])[cols]
-
+    #print (len(bl))
     #read input file seqs
     contigs = SeqIO.to_dict(SeqIO.parse(infile,'fasta'))
     #read in prodigal fasta to dataframe
     df = tools.fasta_to_dataframe(resfile)
-
     df[['start','end','strand']] = df.description.apply(get_prodigal_coords,1)
     #merge blast result with prodigal fasta file info
-    df = df.merge(bl,left_on='name',right_on='qseqid',how='left')
-    #get simple name for contig
-    df['contig'] = df['name'].apply(lambda x: x[:6])
+    res = df.merge(bl,left_on='name',right_on='qseqid',how='right')
 
+    #get simple name for contig
     def get_contig(x):
         return ('_').join(x.split('_')[:-1])
+    res['contig'] = res['name'].apply(get_contig)
 
     l=1  #counter for assigning locus tags
     if outfile is None:
@@ -289,15 +290,20 @@ def annotate_contigs(infile, outfile=None, **kwargs):
     handle = open(outfile,'w+')
     recs = []
     #group by contig and get features for each protein found
-    for c,df in df.groupby('contig'):
-        contig = get_contig(df.iloc[0]['name'])
-        nucseq = contigs[contig].seq
-        rec = SeqRecord(nucseq,id=c)
+    for c,df in res.groupby('contig'):
+        print (c, len(df))
+        contig = get_contig(c)
+        #truncated label for writing to genbank
+        label = ('_').join(c.split('_')[:2])
+        nucseq = contigs[c].seq
+        rec = SeqRecord(nucseq)
         rec.seq.alphabet = generic_dna
+        rec.id = label
+        rec.name = label
         for i,row in df.iterrows():
             tag = 'PREF_{l:04d}'.format(l=l)
             quals = {'gene':row.gene,'product':row['product'],'locus_tag':tag,'translation':row.sequence}
-            feat = SeqFeature(FeatureLocation(row.start,row.end, row.strand), strand=row.strand,
+            feat = SeqFeature(FeatureLocation(row.start,row.end,row.strand), strand=row.strand,
                               type="CDS", qualifiers=quals)
             rec.features.append(feat)
             l+=1
@@ -305,7 +311,7 @@ def annotate_contigs(infile, outfile=None, **kwargs):
         SeqIO.write(rec, handle, "genbank")
         recs.append(rec)
     handle.close()
-    return recs
+    return res,recs
 
 def run(filenames=[], db='card', outdir='amr_results', **kwargs):
     """Run pipeline"""
