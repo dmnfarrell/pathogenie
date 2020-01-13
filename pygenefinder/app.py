@@ -59,7 +59,8 @@ if not os.path.exists(config_path):
     except:
         os.makedirs(config_path)
 
-db_names = ['card','resfinder','argannot','ncbi','plasmidfinder','ecoh','vfdb','bacteria.16SrRNA','bacteria.23SrRNA']
+db_names = ['card','resfinder','argannot','ncbi','plasmidfinder','ecoh','vfdb',
+            'bacteria.16SrRNA','bacteria.23SrRNA']
 
 def check_databases():
     """download databases"""
@@ -98,7 +99,7 @@ def fetch_sequence_from_url(name='card', path=None):
 def make_target_database(filenames):
     """Make blast db from multiple input files"""
 
-    rec=[]    
+    rec=[]
     if filenames is str:
         filenames = [filenames]
     for n in filenames:
@@ -260,6 +261,7 @@ def annotate_contigs(infile, outfile=None, **kwargs):
     #get target seqs
     seqs = list(SeqIO.parse(resfile,'fasta'))
     #make blast db of prokka proteins
+    fetch_sequence_from_url('sprot', path=prokkadbdir)
     dbname = os.path.join(prokkadbdir,'sprot.fa')
     tools.make_blast_database(dbname, dbtype='prot')
     print ('blasting ORFS to uniprot sequences')

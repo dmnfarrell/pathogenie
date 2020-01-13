@@ -49,7 +49,7 @@ class pygenefinderApp(QMainWindow):
         self.create_menu()
         self.main = QSplitter(self)
         screen_resolution = QDesktopWidget().screenGeometry()
-        if screen_resolution.width() > 1200:
+        if screen_resolution.width() > 1600:
             fac=.75
         else:
             fac=1
@@ -59,7 +59,7 @@ class pygenefinderApp(QMainWindow):
         self.main.setFocus()
         self.setCentralWidget(self.main)
         self.setup_gui()
-        #self.new_project()
+        self.new_project()
 
         if project != None:
             self.load_project(project)
@@ -198,8 +198,7 @@ class pygenefinderApp(QMainWindow):
         """New project"""
 
         self.clear_project()
-        self.set_output_folder()
-
+        #self.set_output_folder()
         return
 
     def clear_project(self):
