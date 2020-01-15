@@ -98,7 +98,7 @@ def dialogFromOptions(parent, opts, sections=None,
                 w.setCurrentIndex(0)
             elif t == 'entry':
                 w = QLineEdit()
-                w.setText(str(val))
+                w.setText(str(val))                
             elif t == 'textarea':
                 w = QPlainTextEdit()
                 #w.setSizePolicy(sizepolicy)

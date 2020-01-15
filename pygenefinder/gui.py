@@ -79,7 +79,7 @@ class pygenefinderApp(QMainWindow):
         #mainlayout.addWidget(left)
         self.opts = AppOptions(parent=self.m)
         dialog = self.opts.showDialog(left, wrap=2)
-        left.setFixedWidth(240)
+        left.setFixedWidth(250)
         center = QWidget(self.m)#, orientation=QtCore.Qt.Vertical)
         #mainlayout.addWidget(center)
         l = QVBoxLayout(center)
@@ -228,7 +228,9 @@ class pygenefinderApp(QMainWindow):
                 self.__dict__[k] = data[k]
 
         for s in self.sheets:
-            self.add_table(s, self.sheets[s])
+            df = self.sheets[s]['data']
+            kind = self.sheets[s]['kind']
+            self.add_table(s, df, kind)
         ft = self.fasta_table
         ft.setDataFrame(inputs)
         ft.resizeColumns()
@@ -290,16 +292,19 @@ class pygenefinderApp(QMainWindow):
         self.load_fasta_table(filenames)
         return
 
-    def add_table(self, name, df, kind='results'):
+    def add_table(self, name, df, kind='default'):
         """Add a table to the results notebook"""
 
         if kind == 'results':
             t = tables.ResultsTable(self.tabs,  app=self, dataframe=df)
         elif kind == 'features':
             t = tables.FeaturesTable(self.tabs, app=self, dataframe=df)
+        else:
+            t = tables.DefaultTable(self.tabs, app=self, dataframe=df)
         i = self.tabs.addTab(t, name)
         self.tabs.setCurrentIndex(i)
-        self.sheets[name] = t.model.df
+        print (kind)
+        self.sheets[name] = {'data': df, 'kind':kind}
         return
 
     def delete_table(self):
@@ -327,7 +332,7 @@ class pygenefinderApp(QMainWindow):
         return
 
     def show_fasta(self):
-        """SHow selected input fasta file"""
+        """Show selected input fasta file"""
 
         df = self.fasta_table.model.df
         row = self.fasta_table.getSelectedRow()
@@ -376,10 +381,8 @@ class pygenefinderApp(QMainWindow):
             self.info.append('no annotation for this file')
             return
         recs = self.annotations[name]
-
         if name in self.sheets:
             return
-        #featsdf = tools.genbank_to_dataframe(data.genbank)
         featsdf = tools.records_to_dataframe(recs)
         self.add_table(name, featsdf, kind='features')
         return
@@ -415,7 +418,7 @@ class pygenefinderApp(QMainWindow):
         #call from table class?
         index = self.tabs.currentIndex()
         name = self.tabs.tabText(index)
-        df = self.sheets[name]
+        df = self.sheets[name]['data']
         data = df.iloc[row]
         self.info.append(data.to_string())
         return
@@ -505,9 +508,8 @@ class pygenefinderApp(QMainWindow):
         for db in self.results:
             if db in curr:
                 self.tabs.removeTab(curr[db])
-            self.add_table(db, self.results[db])
+            self.add_table(db, self.results[db], kind='results')
         self.info.append('done')
-        #self.show_table('matrix',m.T.reset_index())
 
         #self.fig.clear()
         #app.plot_heatmap(m.T, fig=self.fig, title='results matrix')
@@ -538,12 +540,13 @@ class pygenefinderApp(QMainWindow):
         return data
 
     def show_fasta_sequences(self, row):
+        """Show fasta sequences across all samples in blast result"""
 
         inputs = self.fasta_table.getDataFrame()
         files = inputs.filename
         index = self.tabs.currentIndex()
         name = self.tabs.tabText(index)
-        df = self.sheets[name]
+        df = self.sheets[name]['data']
         data = df.iloc[row]
         gene = data.gene
         seqs = app.get_gene_hits(df, gene, files, db=name)
@@ -556,7 +559,7 @@ class pygenefinderApp(QMainWindow):
         files = inputs.filename
         index = self.tabs.currentIndex()
         name = self.tabs.tabText(index)
-        df = self.sheets[name]
+        df = self.sheets[name]['data']
         data = df.iloc[row]
         gene = data.gene
         seqs = app.get_gene_hits(df, gene, files, db=name)
@@ -571,7 +574,7 @@ class pygenefinderApp(QMainWindow):
         files = inputs.filename
         index = self.tabs.currentIndex()
         name = self.tabs.tabText(index)
-        df = self.sheets[name]
+        df = self.sheets[name]['data']
         data = df.iloc[row]
         gene = data.gene
         seqs = app.get_gene_hits(df, gene, files, db=name)
@@ -595,7 +598,7 @@ class pygenefinderApp(QMainWindow):
         files = inputs.filename
         index = self.tabs.currentIndex()
         name = self.tabs.tabText(index)
-        df = self.sheets[name]
+        df = self.sheets[name]['data']
         data = df.iloc[row]
         gene = data.gene
         seqs = app.get_gene_hits(df, gene, files, db=name)
@@ -677,7 +680,6 @@ class pygenefinderApp(QMainWindow):
                 +'pandas v%s, matplotlib v%s' %(pandasver,mplver)
 
         msg = QMessageBox.about(self, "About", text)
-
         return
 
 #https://www.learnpyqt.com/courses/concurrent-execution/multithreading-pyqt-applications-qthreadpool/
@@ -732,13 +734,13 @@ class AppOptions(widgets.BaseOptions):
         self.parent = parent
         self.kwds = {}
         dbs = app.db_names
-        self.groups = {'options':['db','identity','coverage','threads']}
+        self.groups = {'options':['db','identity','coverage','threads','multiple hits']}
         self.opts = {'db':{'type':'combobox','default':'card',
                     'items':dbs,'label':'database'},
                     'identity':{'type':'entry','default':90},
                     'coverage':{'type':'entry','default':50},
                     'threads':{'type':'entry','default':4},
-                    #'best hit':{'type':'checkbutton','default':True,
+                    'multiple hits':{'type':'checkbox','default':False}
                     #'label':'keep best hit only'}
                     }
         return

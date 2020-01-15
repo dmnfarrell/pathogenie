@@ -336,6 +336,21 @@ class DataFrameModel(QtCore.QAbstractTableModel):
     def setData(self):
         self.dataChanged.emit()
 
+class DefaultTable(DataFrameTable):
+    """Basic QTableView """
+    def __init__(self, parent=None, app=None, dataframe=None, *args):
+
+        DataFrameTable.__init__(self)
+        self.app = app
+        self.setWordWrap(False)
+        header = self.horizontalHeader()
+
+    def refresh(self):
+        DataFrameTable.refresh(self)
+
+    def addActions(self, event, row):
+        menu = self.menu
+
 class FilesTable(DataFrameTable):
     """
     QTableView for files view.
@@ -395,8 +410,10 @@ class ResultsTable(DataFrameTable):
         menu = self.menu
         showSequencesAction = menu.addAction("Show sequences")
         #showProteinSeqAction = menu.addAction("Protein sequences")
-        showAlignmentAction = menu.addAction("Alignment for gene")
+        showAlignmentAction = menu.addAction("Alignment for all samples")
+        #showAlignmentAction = menu.addAction("Alignment for all hits")
         #showAlignmentViewerAction = menu.addAction("Show alignment in viewer")
+        showTreeAction = menu.addAction("Phylo tree for gene")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showSequencesAction:
             self.app.show_fasta_sequences(row)

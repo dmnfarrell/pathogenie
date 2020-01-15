@@ -155,7 +155,11 @@ def get_gene_hits(res, gene, filename, db='card'):
     path = os.path.join(dbdir,'%s.fa' %db)
     #dbseqs = SeqIO.to_dict(SeqIO.parse(path,'fasta'))
     dbseqs = tools.fasta_to_dataframe(path)
-    dbseqs['gene'] = dbseqs.description.apply(lambda x: x.split('~~~')[1],1)
+    try:
+        dbseqs['gene'] = dbseqs.description.apply(lambda x: x.split('~~~')[1],1)
+    except:
+        print (dbseqs)
+        dbseqs['gene'] = dbseqs['name']
     #print (dbseqs)
     x = res[res.gene==gene]
 
