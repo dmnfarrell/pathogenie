@@ -40,6 +40,7 @@ config_path = os.path.join(home,'.config/pygenefinder')
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'data')
 dbdir = os.path.join(config_path, 'db')
+customdbdir = os.path.join(config_path, 'custom')
 prokkadbdir = os.path.join(config_path, 'prokka')
 prokka_db_names = ['sprot','IS','AMR']
 links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequences',
@@ -50,6 +51,8 @@ links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequenc
         'ecoh':'https://raw.githubusercontent.com/tseemann/abricate/master/db/ecoh/sequences',
         'plasmidfinder':'https://raw.githubusercontent.com/tseemann/abricate/master/db/plasmidfinder/sequences',
         'sprot':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/sprot',
+        'amr':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/AMR',
+        'IS':'https://github.com/tseemann/prokka/blob/master/db/kingdom/Bacteria/IS',
         'bacteria.16SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.16SrRNA.fna',
         'bacteria.23SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.23SrRNA.fna'}
 
@@ -248,7 +251,11 @@ def prokka_header_info(x):
     s = re.split('~~~',x)
     return pd.Series(s)
 
-def annotate_contigs(infile, outfile=None, **kwargs):
+def hmmer(threads):
+
+    cmd = "hmmscan --noali --notextw --acc -E %e --cpu {t} %d /dev/stdin".format(t=threads)
+
+def annotate_contigs(infile, **kwargs):
     """
     Annotate nucelotide sequences (usually a draft assembly with contigs)
     using prodigal and blast to prokka seqs. Writes a genbank file to the
@@ -291,9 +298,7 @@ def annotate_contigs(infile, outfile=None, **kwargs):
     res['contig'] = res['name'].apply(get_contig)
 
     l=1  #counter for assigning locus tags
-    if outfile is None:
-        outfile = infile+'.gbk'
-    handle = open(outfile,'w+')
+
     recs = []
     #group by contig and get features for each protein found
     for c,df in res.groupby('contig'):
@@ -313,10 +318,9 @@ def annotate_contigs(infile, outfile=None, **kwargs):
                               type="CDS", qualifiers=quals)
             rec.features.append(feat)
             l+=1
-        #print(rec.format("gb"))
-        SeqIO.write(rec, handle, "genbank")
+
         recs.append(rec)
-    handle.close()
+    #handle.close()
     return res,recs
 
 def run(filenames=[], db='card', outdir='amr_results', **kwargs):

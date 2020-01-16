@@ -21,7 +21,8 @@
 """
 
 from __future__ import absolute_import, print_function
-import sys,os,traceback,subprocess,glob,platform
+import sys,os,traceback,subprocess
+import glob,platform,shutil
 import pickle
 import threading,time
 from PySide2 import QtCore
@@ -195,6 +196,7 @@ class pygenefinderApp(QMainWindow):
         data['annotations'] = self.annotations
         data['outputdir'] = self.outputdir
         #data['meta'] = self.saveMeta(table)
+        self.projectlabel.setText(filename)
         pickle.dump(data, open(filename,'wb'))
         return
 
@@ -206,7 +208,9 @@ class pygenefinderApp(QMainWindow):
                                                   "","Project files (*.pygf);;All files (*.*)",
                                                   options=options)
         if filename:
-            self.proj_file = filename+'.pygf'
+            if not os.path.splitext(filename)[1] == '.pygf':
+                filename += '.pygf'
+            self.proj_file = filename
             self.save_project()
         return
 
@@ -321,7 +325,6 @@ class pygenefinderApp(QMainWindow):
             t = tables.DefaultTable(self.tabs, app=self, dataframe=df)
         i = self.tabs.addTab(t, name)
         self.tabs.setCurrentIndex(i)
-        print (kind)
         self.sheets[name] = {'data': df, 'kind':kind}
         return
 
@@ -463,7 +466,8 @@ class pygenefinderApp(QMainWindow):
                 progress_callback.emit(msg)
                 continue
             progress_callback.emit(row.filename)
-            fdf,recs = app.annotate_contigs(row.filename, outfile, threads=int(kwds['threads']))
+            fdf,recs = app.annotate_contigs(row.filename, threads=int(kwds['threads']))
+            tools.recs_to_genbank(recs, outfile)
             inputs.loc[i,'genbank'] = outfile
             self.fasta_table.refresh()
             self.annotations[row.label] = recs
@@ -672,9 +676,26 @@ class pygenefinderApp(QMainWindow):
         return 1
 
     def add_sequences_db(self):
-        """Add search sequences"""
+        """Add custom search sequences"""
+
+        path = app.customdbdir
+        print (path)
+        if not os.path.exists(path):
+            os.makedirs(path)
+        filename, _ = QFileDialog.getOpenFileName(self, 'Open Project', './',
+                                        filter="Fasta Files(*.fa *.fna *.fasta);;All Files(*.*)")
+        if not filename:
+            return
+        shutil.copy(filename, os.path.join(path, os.path.basename(filename)))
+        self.get_custom_dbs()
 
         return
+
+    def get_custom_dbs(self):
+        """Find names of custom sequence blast databases"""
+
+        path = app.customdbdir
+        return glob.glob(path+'/*')
 
     def _check_snap(self):
         if os.environ.has_key('SNAP_USER_COMMON'):

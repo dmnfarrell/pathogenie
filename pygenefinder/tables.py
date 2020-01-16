@@ -84,7 +84,7 @@ class DataFrameTable(QTableView):
         self.setModel(tm)
         self.model = tm
         #self.resizeColumnsToContents()
-        self.setWordWrap(False)        
+        self.setWordWrap(False)
         return
 
     def createToolbar(self):
@@ -302,14 +302,13 @@ class DataFrameModel(QtCore.QAbstractTableModel):
         return len(self.df.columns.values)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
+        #types = [int, np.int64, float]
         if role == QtCore.Qt.DisplayRole:
             i = index.row()
             j = index.column()
             value = self.df.iloc[i, j]
-            if type(value) is float and np.isnan(value):
+            if type(value) != str and np.isnan(value):
                 return ''
-            #elif type(value) is int or type(value) is np.int64:
-                #return int(value)
             else:
                 return '{0}'.format(value)
 

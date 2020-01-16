@@ -342,7 +342,7 @@ def plot_tree(dend_file,name='',ax=None):
     Phylo.draw(tree,axes=ax)
     ax.axis('off')
     return
-    
+
 def align_nucmer(file1, file2):
     cmd='nucmer --maxgap=500 --mincluster=100 --coords -p nucmer %s %s' %(file1, file2)
     print (cmd)
@@ -427,13 +427,22 @@ def retrieve_sequences(id_list):
         recs[r['GBSeq_primary-accession']] = r
     return recs
 
-def recs_to_fasta(recs,outfile):
+def recs_to_fasta(recs, outfile):
     res=[]
     for i in recs:
         r=recs[i]
         res.append( [r['GBSeq_primary-accession'],r['GBSeq_sequence'],r['GBSeq_definition']] )
     df=pd.DataFrame(res,columns=['id','sequence','description'])
     dataframe_to_fasta(df,outfile=outfile,seqkey='sequence',idkey='id')
+    return
+
+def recs_to_genbank(recs, outfile):
+
+    handle = open(outfile,'w+')
+    for rec in recs:
+        #rec = recs[i]
+        SeqIO.write(rec, handle, "genbank")
+    handle.close()
     return
 
 def get_gilist(accs):
