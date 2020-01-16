@@ -84,7 +84,7 @@ class DataFrameTable(QTableView):
         self.setModel(tm)
         self.model = tm
         #self.resizeColumnsToContents()
-        self.setWordWrap(False)
+        self.setWordWrap(False)        
         return
 
     def createToolbar(self):
@@ -308,6 +308,8 @@ class DataFrameModel(QtCore.QAbstractTableModel):
             value = self.df.iloc[i, j]
             if type(value) is float and np.isnan(value):
                 return ''
+            #elif type(value) is int or type(value) is np.int64:
+                #return int(value)
             else:
                 return '{0}'.format(value)
 
@@ -419,6 +421,8 @@ class ResultsTable(DataFrameTable):
             self.app.show_fasta_sequences(row)
         elif action == showAlignmentAction:
             self.app.show_gene_alignment(row)
+        elif action == showTreeAction:
+            self.app.show_phylo_tree(row)
         #elif action == showProteinSeqAction:
         #    self.app.show_protein_sequences(row)
         return

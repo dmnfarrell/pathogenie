@@ -331,6 +331,18 @@ def muscle_alignment(filename=None, seqs=None):
     align = AlignIO.read(name+'.txt', 'fasta')
     return align
 
+def plot_tree(dend_file,name='',ax=None):
+    """Plot phylo tree"""
+
+    from Bio import Phylo
+    if ax==None:
+        f,ax=plt.subplots(1,1,figsize=(12,8))
+    tree = Phylo.read(dend_file, "newick")
+    ax.set_title(name)
+    Phylo.draw(tree,axes=ax)
+    ax.axis('off')
+    return
+    
 def align_nucmer(file1, file2):
     cmd='nucmer --maxgap=500 --mincluster=100 --coords -p nucmer %s %s' %(file1, file2)
     print (cmd)

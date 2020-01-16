@@ -94,11 +94,14 @@ def dialogFromOptions(parent, opts, sections=None,
             lbl.setStyleSheet(style)
             if t == 'combobox':
                 w = QComboBox()
-                w.addItems(opt['items'])
-                w.setCurrentIndex(0)
+                w.addItems(opt['items'])                
+                try:
+                    w.setCurrentIndex(opt['items'].index(str(opt['default'])))
+                except:
+                    w.setCurrentIndex(0)
             elif t == 'entry':
                 w = QLineEdit()
-                w.setText(str(val))                
+                w.setText(str(val))
             elif t == 'textarea':
                 w = QPlainTextEdit()
                 #w.setSizePolicy(sizepolicy)

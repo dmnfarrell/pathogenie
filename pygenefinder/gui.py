@@ -49,8 +49,8 @@ class pygenefinderApp(QMainWindow):
         self.create_menu()
         self.main = QSplitter(self)
         screen_resolution = QDesktopWidget().screenGeometry()
-        if screen_resolution.width() > 1600:
-            fac=.75
+        if screen_resolution.height() > 1080:
+            fac=.8
         else:
             fac=1
         width, height = screen_resolution.width()*fac, screen_resolution.height()*fac
@@ -96,7 +96,7 @@ class pygenefinderApp(QMainWindow):
         right = QWidget(self.m)
         #mainlayout.addWidget(right)
         self.info = QTextEdit(right, readOnly=True)
-        self.info.setStyleSheet("font-family: monospace; font-size: 14px;")
+        self.info.setStyleSheet("font-family: monospace; font-size: 12px;")
         l2 = QVBoxLayout(right)
         l2.addWidget(self.info)
         self.info.setText("Welcome to pygenefinder")
@@ -105,8 +105,8 @@ class pygenefinderApp(QMainWindow):
 
         self.statusBar = QStatusBar()
         from . import __version__
-        self.statusLabel = QLabel("pygenefinder %s" %__version__)
-        self.statusBar.addWidget(self.statusLabel, 1)
+        self.projectlabel = QLabel('')
+        self.statusBar.addWidget(self.projectlabel, 1)
         self.outdirLabel = QLabel("")
         self.statusBar.addWidget(self.outdirLabel, 1)
         self.progressbar = QProgressBar()
@@ -150,6 +150,7 @@ class pygenefinderApp(QMainWindow):
                 QtCore.Qt.CTRL + QtCore.Qt.Key_O)
         self.file_menu.addAction('&Save Project', self.save_project,
                 QtCore.Qt.CTRL + QtCore.Qt.Key_S)
+        self.file_menu.addAction('&Save Project As', self.save_project_dialog)
         self.file_menu.addAction('&Quit', self.quit,
                 QtCore.Qt.CTRL + QtCore.Qt.Key_Q)
         self.menuBar().addMenu(self.file_menu)
@@ -174,9 +175,20 @@ class pygenefinderApp(QMainWindow):
         self.help_menu.addAction('&About', self.about)
         return
 
-    def save_project(self, filename='test.pygf'):
+    def show_info(self, msg):
+
+        self.info.append(msg)
+        self.info.verticalScrollBar().setValue(
+            self.info.verticalScrollBar().maximum())
+        return
+
+    def save_project(self):
         """Save project"""
 
+        if self.proj_file == None:
+            self.save_project_dialog()
+
+        filename = self.proj_file
         data={}
         data['inputs'] = self.fasta_table.getDataFrame()
         data['sheets'] = self.sheets
@@ -186,13 +198,17 @@ class pygenefinderApp(QMainWindow):
         pickle.dump(data, open(filename,'wb'))
         return
 
-    def save_as_project(self):
+    def save_project_dialog(self):
         """Save as project"""
 
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getSaveFileName(self,"Save Project",
-                                                  "","Dxpl Files (*.dexpl);;All files (*.*)",
+                                                  "","Project files (*.pygf);;All files (*.*)",
                                                   options=options)
+        if filename:
+            self.proj_file = filename+'.pygf'
+            self.save_project()
+        return
 
     def new_project(self):
         """New project"""
@@ -212,6 +228,7 @@ class pygenefinderApp(QMainWindow):
         self.tabs.clear()
         #for i in range(self.tabs.count()):
         #    self.tabs.removeTab(i)
+        self.projectlabel.setText('')
         self.outdirLabel.setText(self.outputdir)
         return
 
@@ -235,6 +252,7 @@ class pygenefinderApp(QMainWindow):
         ft.setDataFrame(inputs)
         ft.resizeColumns()
         self.proj_file = filename
+        self.projectlabel.setText(self.proj_file)
         self.outdirLabel.setText(self.outputdir)
         return
 
@@ -360,14 +378,13 @@ class pygenefinderApp(QMainWindow):
         m[m.notnull()] = 1
         m = m.fillna(0)
         m = m.T.reset_index()
-        self.add_table('gene matrix', m)
+        self.add_table('feature matrix', m, kind='results')
         self.feature_matrix = m
         return
 
     def plot_gene_matrix(self):
 
         m = self.feature_matrix
-
         return
 
     def show_feature_table(self):
@@ -441,17 +458,19 @@ class pygenefinderApp(QMainWindow):
             if not os.path.exists(self.outputdir):
                 os.makedirs(self.outputdir)
             outfile = os.path.join(self.outputdir, row.label + '.gbk')
-            inputs.loc[i,'genbank'] = outfile
             if row.label in self.annotations:
                 msg = 'Annotation exists, skipping'
                 progress_callback.emit(msg)
                 continue
             progress_callback.emit(row.filename)
             fdf,recs = app.annotate_contigs(row.filename, outfile, threads=int(kwds['threads']))
+            inputs.loc[i,'genbank'] = outfile
             self.fasta_table.refresh()
             self.annotations[row.label] = recs
-            progress_callback.emit('Found %s genes' %len(recs))
+            featcount = int(sum([len(rec.features) for rec in recs]))
+            progress_callback.emit('Found %s genes' %featcount)
             progress_callback.emit('Wrote output to %s' %outfile)
+            inputs.loc[i,'genes'] = featcount
         return
 
     def annotation_completed(self):
@@ -467,7 +486,10 @@ class pygenefinderApp(QMainWindow):
     def run_gene_finder(self, progress_callback):
         """Run gene blasting function"""
 
-        #print (self.inputs)
+        self.blast_results = None
+        retval = self.check_output_folder()
+        if retval == 0:
+            return
         inputs = self.fasta_table.getDataFrame()
         if len(inputs) == 0:
             msg = 'you need to load fasta files'
@@ -492,8 +514,7 @@ class pygenefinderApp(QMainWindow):
         msg = 'found %s genes' %len(bl.gene.unique())
         progress_callback.emit(msg)
         m = app.pivot_blast_results(bl)
-        self.results = {db: bl}
-
+        self.blast_results = {db: bl}
         return
 
     def get_tab_names(self):
@@ -502,13 +523,15 @@ class pygenefinderApp(QMainWindow):
     def find_genes_completed(self):
         """Gene blasting/finding completed"""
 
-        print("done")
         self.progressbar.setRange(0,1)
+        if self.blast_results == None:
+            return
+        print("done")
         curr = self.get_tab_names()
-        for db in self.results:
+        for db in self.blast_results:
             if db in curr:
                 self.tabs.removeTab(curr[db])
-            self.add_table(db, self.results[db], kind='results')
+            self.add_table(db, self.blast_results[db], kind='results')
         self.info.append('done')
 
         #self.fig.clear()
@@ -551,7 +574,8 @@ class pygenefinderApp(QMainWindow):
         gene = data.gene
         seqs = app.get_gene_hits(df, gene, files, db=name)
         for s in seqs:
-            self.info.append(s.format("fasta"))
+            self.show_info(s.format("fasta"))
+            #self.info.append(s.format("fasta"))
         return
 
     def show_protein_sequences(self, row):
@@ -580,8 +604,23 @@ class pygenefinderApp(QMainWindow):
         seqs = app.get_gene_hits(df, gene, files, db=name)
         #maaft_alignment(seqfile)
         aln = app.get_alignment(seqs)
-        self.info.append(aln.format('clustal'))
+        #self.info.append(aln.format('clustal'))
+        self.show_info(aln.format('clustal'))
+        #from Bio import Phylo
+        #tree = Phylo.read('temp.dnd', "newick")
+        #Phylo.draw_ascii(tree)
         return aln, gene
+
+    def show_phylo_tree(self, row):
+
+        inputs = self.fasta_table.getDataFrame()
+        files = inputs.filename
+        index = self.tabs.currentIndex()
+        name = self.tabs.tabText(index)
+        df = self.sheets[name]['data']
+        data = df.iloc[row]
+
+        return
 
     def save_gene_alignment(self, row):
 
@@ -619,6 +658,18 @@ class pygenefinderApp(QMainWindow):
         #check it's empty?
         self.outdirLabel.setText(self.outputdir)
         return
+
+    def check_output_folder(self):
+        """check if we have an output dir"""
+
+        if self.outputdir == None:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("You should set an output folder from the Settings menu.")
+            msg.setWindowTitle('No output folder set.')
+            retval = msg.exec_()
+            return 0
+        return 1
 
     def add_sequences_db(self):
         """Add search sequences"""
@@ -734,12 +785,13 @@ class AppOptions(widgets.BaseOptions):
         self.parent = parent
         self.kwds = {}
         dbs = app.db_names
+        cpus = [str(i) for i in range(1,os.cpu_count()+1)]
         self.groups = {'options':['db','identity','coverage','threads','multiple hits']}
         self.opts = {'db':{'type':'combobox','default':'card',
                     'items':dbs,'label':'database'},
                     'identity':{'type':'entry','default':90},
                     'coverage':{'type':'entry','default':50},
-                    'threads':{'type':'entry','default':4},
+                    'threads':{'type':'combobox','default':4,'items':cpus},
                     'multiple hits':{'type':'checkbox','default':False}
                     #'label':'keep best hit only'}
                     }
