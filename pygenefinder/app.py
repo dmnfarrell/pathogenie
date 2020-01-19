@@ -26,7 +26,6 @@ import urllib
 import tempfile
 import pandas as pd
 import numpy as np
-import pylab as plt
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
@@ -52,9 +51,11 @@ links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequenc
         'plasmidfinder':'https://raw.githubusercontent.com/tseemann/abricate/master/db/plasmidfinder/sequences',
         'sprot':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/sprot',
         'amr':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/AMR',
-        'IS':'https://github.com/tseemann/prokka/blob/master/db/kingdom/Bacteria/IS',
+        'IS':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/IS',
         'bacteria.16SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.16SrRNA.fna',
         'bacteria.23SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.23SrRNA.fna'}
+
+hmm = 'https://github.com/tseemann/prokka/raw/master/db/hmm/HAMAP.hmm'
 
 if not os.path.exists(config_path):
     try:
@@ -123,7 +124,7 @@ def find_genes(target, ref='card', ident=90, coverage=75, duplicates=False, thre
     #the AMR db is the query for the blast
     queryseqs = list(SeqIO.parse(path,'fasta'))
     print ('blasting %s sequences' %len(queryseqs))
-    bl = tools.blast_sequences(target, queryseqs, maxseqs=1, evalue=.01,
+    bl = tools.blast_sequences(target, queryseqs, maxseqs=1, evalue=1e-4,
                                cmd='blastn', show_cmd=True, threads=int(threads))
 
     bl['qlength'] = bl.sequence.str.len()
@@ -208,6 +209,7 @@ def pivot_blast_results(bl):
 
 def plot_heatmap(m, fig=None, title=''):
 
+    import pylab as plt
     from matplotlib.gridspec import GridSpec
     l=1+int(len(m)/30)
     if fig == None:
@@ -253,9 +255,19 @@ def prokka_header_info(x):
 
 def hmmer(threads):
 
+    db = os.path.join(config_path,'hmms','HAMAP.hmm')
     cmd = "hmmscan --noali --notextw --acc -E %e --cpu {t} %d /dev/stdin".format(t=threads)
 
-def annotate_contigs(infile, **kwargs):
+def default_databases():
+    """default blast db table"""
+
+    path = os.path.join(config_path, 'blast_dbs.csv')
+    df = {'sprot':{'filename':'sprot.fa','evalue':1e-10},
+            'IS':{'filename':'IS.fa','evalue':1e-30},
+            'amr':{'filename':'amr.fa','evalue':1e-300}}
+    return
+
+def annotate_contigs(infile, prefix='PREF', **kwargs):
     """
     Annotate nucelotide sequences (usually a draft assembly with contigs)
     using prodigal and blast to prokka seqs. Writes a genbank file to the
@@ -267,60 +279,87 @@ def annotate_contigs(infile, **kwargs):
         a list of SeqRecords with the features
     """
 
+    dbs = ['IS','amr','sprot']
+    evalues = [1e-10,1e-100,1e-4]
+    ident = 60
     #run prodigal
     resfile = prodigal(infile)
-    #get target seqs
-    seqs = list(SeqIO.parse(resfile,'fasta'))
-    #make blast db of prokka proteins
-    fetch_sequence_from_url('sprot', path=prokkadbdir)
-    dbname = os.path.join(prokkadbdir,'sprot.fa')
-    tools.make_blast_database(dbname, dbtype='prot')
-    print ('blasting ORFS to uniprot sequences')
-    bl = tools.blast_sequences(dbname, seqs, maxseqs=1, evalue=1e-3,
-                                cmd='blastp', show_cmd=True, **kwargs)
-
-    bl[['protein_id','gene','product','cog']] = bl.stitle.apply(prokka_header_info,1)
-
-    cols = ['qseqid','sseqid','pident','sstart','send','protein_id','gene','product']
-    bl = bl.sort_values(['qseqid','pident'], ascending=False).drop_duplicates(['qseqid'])[cols]
-    #print (len(bl))
-    #read input file seqs
-    contigs = SeqIO.to_dict(SeqIO.parse(infile,'fasta'))
     #read in prodigal fasta to dataframe
     df = tools.fasta_to_dataframe(resfile)
-    df[['start','end','strand']] = df.description.apply(get_prodigal_coords,1)
-    #merge blast result with prodigal fasta file info
-    res = df.merge(bl,left_on='name',right_on='qseqid',how='right')
+    #get target seqs
+    seqs = list(SeqIO.parse(resfile,'fasta'))
+    #read input file nucleotide seqs
+    contigs = SeqIO.to_dict(SeqIO.parse(infile,'fasta'))
+    #print (df[:5])
+    res = []
+    i=0
+    for db in dbs:
+        fetch_sequence_from_url(db, path=prokkadbdir)
+        #make blast db of prokka proteins
+        dbname = os.path.join(prokkadbdir,'%s.fa' %db)
+        tools.make_blast_database(dbname, dbtype='prot')
+        print ('blasting %s ORFs to %s' %(len(seqs),db))
+        bl = tools.blast_sequences(dbname, seqs, maxseqs=1, evalue=evalues[i],
+                                    cmd='blastp', show_cmd=True, **kwargs)
+        bl = bl[bl.pident>ident]
+        if len(bl)==0:
+            i+=1
+            continue
+        bl[['protein_id','gene','product','cog']] = bl.stitle.apply(prokka_header_info,1)
 
+        cols = ['qseqid','sseqid','pident','sstart','send','protein_id','gene','product']
+        print (len(bl))
+        bl = bl.sort_values(['qseqid','pident'], ascending=False).drop_duplicates(['qseqid'])[cols]
+        print (len(bl))
+
+        #merge blast result with prodigal sequences
+        found = df.merge(bl,left_on='name',right_on='qseqid',how='right')
+        #get remaining sequences with no hits to this db
+        df = df[~df.name.isin(bl.qseqid)]
+        seqs = tools.dataframe_to_seqrecords(df, idkey='name')
+        #print (seqs[:1])
+        #print (found)
+        res.append(found)
+        print ('%s sequences unassigned' %len(df))
+        i+=1
+    #all results together
+    res = pd.concat(res)
+
+    #remaining unknowns are hypothetical proteins
+    unknown = df[~df.name.isin(res.name)]
+    unknown['product'] = 'hypothetical protein'
+    res = pd.concat([res,unknown], sort=False)
+    res[['start','end','strand']] = res.description.apply(get_prodigal_coords,1)
+    #print (res)
     #get simple name for contig
     def get_contig(x):
         return ('_').join(x.split('_')[:-1])
     res['contig'] = res['name'].apply(get_contig)
 
+    #we then write the assigned sequences to seqrecord/features
     l=1  #counter for assigning locus tags
-
     recs = []
     #group by contig and get features for each protein found
     for c,df in res.groupby('contig'):
-        print (c, len(df))
         contig = get_contig(c)
         #truncated label for writing to genbank
         label = ('_').join(c.split('_')[:2])
+        #print (c, len(df), label)
         nucseq = contigs[c].seq
         rec = SeqRecord(nucseq)
         rec.seq.alphabet = generic_dna
         rec.id = label
         rec.name = label
+        df = df.sort_values('start')
         for i,row in df.iterrows():
-            tag = 'PREF_{l:04d}'.format(l=l)
-            quals = {'gene':row.gene,'product':row['product'],'locus_tag':tag,'translation':row.sequence}
+            tag = '{p}_{l:04d}'.format(p=prefix,l=l)
+            quals = {'gene':row.gene,'product':row['product'],'locus_tag':tag,'prodigal_id':row.qseqid,'translation':row.sequence}
             feat = SeqFeature(FeatureLocation(row.start,row.end,row.strand), strand=row.strand,
                               type="CDS", qualifiers=quals)
             rec.features.append(feat)
             l+=1
-
+        #print(rec.format("gb"))
         recs.append(rec)
-    #handle.close()
     return res,recs
 
 def run(filenames=[], db='card', outdir='amr_results', **kwargs):

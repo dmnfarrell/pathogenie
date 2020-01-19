@@ -28,7 +28,7 @@ from Bio.Seq import Seq
 from Bio import SeqIO
 from Bio import Phylo, AlignIO
 #import matplotlib as mpl
-import pylab as plt
+#import pylab as plt
 #import seaborn as sns
 import numpy as np
 import pandas as pd
@@ -90,12 +90,12 @@ def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
     SeqIO.write(seqs, outfile, "fasta")
     return outfile
 
-def dataframe_to_seqrecords(df, seqkey='sequence', idkey='id'):
+def dataframe_to_seqrecords(df, seqkey='sequence', idkey='id', desckey='description'):
     """Dataframe to list of Bio.SeqRecord objects"""
 
     seqs=[]
     for i,r in df.iterrows():
-        s=SeqRecord(Seq(r[seqkey]),id=r[idkey])
+        s=SeqRecord(Seq(r[seqkey]),id=r[idkey],description=r[desckey])
         seqs.append(s)
     return seqs
 
@@ -236,7 +236,7 @@ def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
         output = os.path.splitext(query)[0]+'_blast.txt'
     if getattr(sys, 'frozen', False):
         print ('bundled app in windows')
-        cmd = resource_path('bin/blastn.exe')
+        cmd = resource_path('bin/%s.exe' %cmd)
 
     from Bio.Blast.Applications import NcbiblastxCommandline
     outfmt = '"6 qseqid sseqid qseq sseq pident qcovs length mismatch gapopen qstart qend sstart send evalue bitscore stitle"'

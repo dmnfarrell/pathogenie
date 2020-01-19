@@ -55,20 +55,18 @@ class pygenefinderApp(QMainWindow):
         else:
             fac=1
         width, height = screen_resolution.width()*fac, screen_resolution.height()*fac
-        self.setGeometry(QtCore.QRect(200, 200, width, height))
+        self.setGeometry(QtCore.QRect(150, 150, width, height))
 
         self.main.setFocus()
         self.setCentralWidget(self.main)
         self.setup_gui()
-        self.new_project()
+        self.clear_project()
 
         if project != None:
             self.load_project(project)
         self.threadpool = QtCore.QThreadPool()
         if project != None:
             self.load_project(project)
-        else:
-            self.load_test()
         return
 
     def setup_gui(self):
@@ -95,11 +93,19 @@ class pygenefinderApp(QMainWindow):
         l.addWidget(self.tabs)
 
         right = QWidget(self.m)
-        #mainlayout.addWidget(right)
-        self.info = QTextEdit(right, readOnly=True)
-        self.info.setStyleSheet("font-family: monospace; font-size: 12px;")
         l2 = QVBoxLayout(right)
-        l2.addWidget(self.info)
+        #mainlayout.addWidget(right)
+        self.right_tabs = QTabWidget(right)
+        self.right_tabs.setTabsClosable(True)
+        l2.addWidget(self.right_tabs)
+        self.info = QTextEdit(right, readOnly=True)
+        #self.info.setStyleSheet("font-family: monospace; font-size: 12px;")
+        font = QFont("Monospace")
+        font.setPointSize(9)
+        font.setStyleHint(QFont.TypeWriter)
+        self.info.setFont(font)
+        #l2.addWidget(self.info)
+        self.right_tabs.addTab(self.info, 'log')
         self.info.setText("Welcome to pygenefinder")
         self.m.setSizes([50,200,150])
         self.m.setStretchFactor(1,0)
@@ -168,7 +174,8 @@ class pygenefinderApp(QMainWindow):
         self.settings_menu = QMenu('&Settings', self)
         self.menuBar().addMenu(self.settings_menu)
         self.settings_menu.addAction('&Set Output Folder', self.set_output_folder)
-        self.settings_menu.addAction('&Add Sequence Database', self.add_sequences_db)
+        self.settings_menu.addAction('&Add Blast Sequences', self.add_sequences_db)
+        self.settings_menu.addAction('&Add Trusted Proteins', self.add_trusted_proteins)
 
         self.help_menu = QMenu('&Help', self)
         self.menuBar().addMenu(self.help_menu)
@@ -217,13 +224,19 @@ class pygenefinderApp(QMainWindow):
     def new_project(self):
         """New project"""
 
-        self.clear_project()
+        self.clear_project(ask=True)
         #self.set_output_folder()
         return
 
-    def clear_project(self):
+    def clear_project(self, ask=False):
         """Clear all loaded inputs and results"""
 
+        reply=None
+        if ask == True:
+            reply = QMessageBox.question(self, 'Confirm', "This will clear the current project.\nAre you sure?",
+                                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if reply == QMessageBox.No:
+            return
         self.annotations = {}
         self.outputdir = None
         self.sheets = {}
@@ -239,7 +252,6 @@ class pygenefinderApp(QMainWindow):
     def load_project(self, filename=None):
         """Load project"""
 
-        filename = 'test.pygf'
         self.clear_project()
         data = pickle.load(open(filename,'rb'))
         inputs = data['inputs']
@@ -275,12 +287,7 @@ class pygenefinderApp(QMainWindow):
     def load_test(self):
         """Load test_files"""
 
-        if self.proj_file != None:
-            reply = QMessageBox.question(self, 'Confirm', "This will remove the current project.\nAre you sure?",
-                                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if reply == QMessageBox.No:
-                return
-        self.clear_project()
+        self.clear_project(ask=True)
         filenames = glob.glob(os.path.join(app.datadir, '*.fa'))
         self.load_fasta_table(filenames)
         return
@@ -390,6 +397,27 @@ class pygenefinderApp(QMainWindow):
         m = self.feature_matrix
         return
 
+    def plot_feature_summary(self):
+
+        df = self.fasta_table.model.df
+        row = self.fasta_table.getSelectedRows()[0]
+        data = df.iloc[row]
+        name = data.label
+        w = widgets.PlotViewer(self)
+        ax = w.ax
+        recs = self.annotations[name]
+        featsdf = tools.records_to_dataframe(recs)
+        featsdf.length.hist(ax=ax)
+
+        i = self.right_tabs.addTab(w, name)
+        self.tabs.setCurrentIndex(i)
+        return w
+
+    def show_annotation_report(self):
+
+
+        return
+
     def show_feature_table(self):
         """Show features for input file in table"""
 
@@ -435,12 +463,12 @@ class pygenefinderApp(QMainWindow):
         return
 
     def show_feature(self, row):
-        #call from table class?
+
         index = self.tabs.currentIndex()
         name = self.tabs.tabText(index)
         df = self.sheets[name]['data']
         data = df.iloc[row]
-        self.info.append(data.to_string())
+        self.show_info(data.to_string())
         return
 
     def annotate_files(self, progress_callback):
@@ -679,15 +707,26 @@ class pygenefinderApp(QMainWindow):
         """Add custom search sequences"""
 
         path = app.customdbdir
-        print (path)
         if not os.path.exists(path):
             os.makedirs(path)
-        filename, _ = QFileDialog.getOpenFileName(self, 'Open Project', './',
+        filename, _ = QFileDialog.getOpenFileName(self, 'Open Fasta', './',
                                         filter="Fasta Files(*.fa *.fna *.fasta);;All Files(*.*)")
         if not filename:
             return
         shutil.copy(filename, os.path.join(path, os.path.basename(filename)))
         self.get_custom_dbs()
+        return
+
+    def add_trusted_proteins(self):
+        """"""
+
+        path = app.customdbdir
+        if not os.path.exists(path):
+            os.makedirs(path)
+        filename, _ = QFileDialog.getOpenFileName(self, 'Open Protein Fasta', './',
+                                    filter="Fasta Files(*.fa *.faa *.fasta);;All Files(*.*)")
+        if not filename:
+            return
 
         return
 
@@ -807,14 +846,13 @@ class AppOptions(widgets.BaseOptions):
         self.kwds = {}
         dbs = app.db_names
         cpus = [str(i) for i in range(1,os.cpu_count()+1)]
-        self.groups = {'options':['db','identity','coverage','threads','multiple hits']}
+        self.groups = {'blast':['db','identity','coverage','threads','multiple hits']}
         self.opts = {'db':{'type':'combobox','default':'card',
                     'items':dbs,'label':'database'},
                     'identity':{'type':'entry','default':90},
                     'coverage':{'type':'entry','default':50},
                     'threads':{'type':'combobox','default':4,'items':cpus},
                     'multiple hits':{'type':'checkbox','default':False}
-                    #'label':'keep best hit only'}
                     }
         return
 

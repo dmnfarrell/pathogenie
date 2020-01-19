@@ -77,6 +77,7 @@ class DataFrameTable(QTableView):
         self.setDropIndicatorShown(True)
         self.resizeColumnsToContents()
         self.setCornerButtonEnabled(True)
+        self.setSortingEnabled(True)
 
         font = QFont("Arial", 12)
         self.setFont(font)
@@ -221,14 +222,16 @@ class DataFrameTable(QTableView):
 
         hheader = self.horizontalHeader()
         column = hheader.logicalIndexAt(hheader.mapFromGlobal(pos))
-        #print (column)
+        print (column)
         model = self.model
         menu = QMenu(self)
         setIndexAction = menu.addAction("Set as Index")
-        sortAction = menu.addAction("Sort By")
+        #sortAction = menu.addAction("Sort By")
         action = menu.exec_(self.mapToGlobal(pos))
         if action == setIndexAction:
             self.setIndex()
+        #elif action == sortAction:
+        #    self.sort(column)
         return
 
     def keyPressEvent(self, event):
@@ -372,7 +375,8 @@ class FilesTable(DataFrameTable):
         showFeaturesAction = menu.addAction("Show Feature Table")
         showGenbankAction = menu.addAction("Show Genbank File")
         showGFFAction = menu.addAction("Show GFF File")
-        removeAction = menu.addAction("Remove Selected")
+        #removeAction = menu.addAction("Remove Selected")
+        plotSummaryAction = menu.addAction("Plot Feature Summary")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         # Map the logical row index to a real index for the source model
         #model = self.model
@@ -389,6 +393,9 @@ class FilesTable(DataFrameTable):
             self.app.show_genbank_file()
         elif action == showGFFAction:
             self.app.show_gff_file()
+        elif action == plotSummaryAction:
+            self.app.plot_feature_summary()
+        return
 
     def refresh(self):
         DataFrameTable.refresh(self)
@@ -440,6 +447,9 @@ class FeaturesTable(DataFrameTable):
 
         menu = self.menu
         showfeatureAction = menu.addAction("Show Feature")
+        copysequenceAction = menu.addAction("Copy Sequence")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showfeatureAction:
             self.app.show_feature(row)
+        elif action == copysequenceAction:
+            self.app.copy_sequence(row)

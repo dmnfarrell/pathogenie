@@ -42,7 +42,7 @@ def dialogFromOptions(parent, opts, sections=None,
     """Get Qt widgets dialog from a dictionary of options"""
 
     sizepolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    sizepolicy.setHorizontalStretch(0)
+    sizepolicy.setHorizontalStretch(1)
     sizepolicy.setVerticalStretch(0)
 
     style = '''
@@ -50,8 +50,8 @@ def dialogFromOptions(parent, opts, sections=None,
         font-size: 12px;
     }
     QWidget {
-        max-width: 250px;
-        min-width: 60px;
+        max-width: 130px;
+        min-width: 30px;
         font-size: 14px;
     }
     QPlainTextEdit {
@@ -74,13 +74,15 @@ def dialogFromOptions(parent, opts, sections=None,
     for s in sections:
         row=1
         col=1
-        f = QWidget()
+        f = QGroupBox()
+        f.setSizePolicy(sizepolicy)
+        f.setTitle(s)
         #f.resize(50,100)
-        f.sizeHint()
+        #f.sizeHint()
         l.addWidget(f,1,scol)
         gl = QGridLayout(f)
         gl.setAlignment(QtCore.Qt.AlignTop)
-        gl.setSpacing(10)
+        #gl.setSpacing(10)
         for o in sections[s]:
             label = o
             val = None
@@ -94,7 +96,7 @@ def dialogFromOptions(parent, opts, sections=None,
             lbl.setStyleSheet(style)
             if t == 'combobox':
                 w = QComboBox()
-                w.addItems(opt['items'])                
+                w.addItems(opt['items'])
                 try:
                     w.setCurrentIndex(opt['items'].index(str(opt['default'])))
                 except:
@@ -287,7 +289,11 @@ class SeqFeaturesViewer(QDialog):
         #QDialog.__init__(self)
         super(SeqFeaturesViewer, self).__init__(parent)
         self.ed = ed = QPlainTextEdit(self, readOnly=True)
-        ed.setStyleSheet("font-family: monospace; font-size: 14px;")
+        #ed.setStyleSheet("font-family: monospace; font-size: 14px;")
+        font = QFont("Monospace")
+        font.setPointSize(10)
+        font.setStyleHint(QFont.TypeWriter)
+        self.ed.setFont(font)
         self.setWindowTitle('sequence features')
         self.setGeometry(QtCore.QRect(200, 200, 800, 800))
         #self.setCentralWidget(ed)
@@ -344,8 +350,24 @@ class AlignmentViewer(QDialog):
         self.tabs.addTab(webview,name)
         return
 
-def plotViewer(QWidget):
+class PlotViewer(QDialog):
     def __init__(self, parent=None):
-        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+        super(PlotViewer, self).__init__(parent)
         from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+        self.setGeometry(QtCore.QRect(200, 200, 600, 600))
+        self.grid = QGridLayout()
+        self.setLayout(self.grid)
+        self.show()
+        self.show_figure()
+        return
+
+    def show_figure(self):
+
+        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
         import matplotlib.pyplot as plt
+        fig,ax = plt.subplots(figsize=(7,5), dpi=65, facecolor=(1,1,1), edgecolor=(0,0,0))
+        #ax.plot(range(10))
+        canvas = FigureCanvas(fig)
+        self.grid.addWidget(canvas)
+        self.ax = ax
+        return
