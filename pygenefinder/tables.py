@@ -375,8 +375,8 @@ class FilesTable(DataFrameTable):
         showFeaturesAction = menu.addAction("Show Feature Table")
         showGenbankAction = menu.addAction("Show Genbank File")
         showGFFAction = menu.addAction("Show GFF File")
-        #removeAction = menu.addAction("Remove Selected")
         plotSummaryAction = menu.addAction("Plot Feature Summary")
+        removeAction = menu.addAction("Remove Selected")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         # Map the logical row index to a real index for the source model
         #model = self.model
@@ -395,6 +395,8 @@ class FilesTable(DataFrameTable):
             self.app.show_gff_file()
         elif action == plotSummaryAction:
             self.app.plot_feature_summary()
+        elif action == removeAction:
+            self.deleteRows(row)
         return
 
     def refresh(self):
@@ -403,6 +405,13 @@ class FilesTable(DataFrameTable):
     def resizeColumns(self):
         self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
+
+    def deleteRows(self, rows):
+
+        idx = self.model.df.index[rows]        
+        self.model.df = self.model.df.drop(idx)
+        self.refresh()
+        return
 
 class ResultsTable(DataFrameTable):
     """

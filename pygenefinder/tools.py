@@ -552,25 +552,6 @@ def genes_clustermap(x,xticklabels=0,title=''):
     cg.fig.subplots_adjust(right=0.8)
     return
 
-def get_roary_gene(gene, path='compare_acinet/roary'):
-    x = pd.read_csv(os.path.join(path, 'gene_presence_absence.csv'))
-
-    if not gene in list(x.Gene):
-        print ('no such gene name')
-        return
-    r = x[x.Gene==gene].iloc[0].dropna()
-
-    samples = x.columns[14:]
-    lbls = r.loc[samples].to_dict()
-    lbls = dict((lbls[k], k) for k in lbls)
-    f = '%s/pan_genome_sequences/%s.fa.aln' %(path,gene)
-    if not os.path.exists(f):
-        return
-    aln = AlignIO.read(f,'fasta')
-    for a in aln:
-        a.id = lbls[a.id]
-    return aln
-
 def get_prot_seq(name,gene):
     #get prot seqs from annot fasta files
     f='annot_scaff/{n}/{n}.faa'.format(n=name)
@@ -696,3 +677,47 @@ def abricate(filename, db='card',id=None):
     id = os.path.basename(filename)
     df['id'] = id
     return df
+
+def read_aragorn(infile):
+    """Read aragorn file.
+    see https://github.com/jorvis/biocode/blob/master/gff/merge_predicted_gff3.py
+    """
+
+    res=[]
+    for line in open(infile):
+        line = line.rstrip()
+
+        if line.startswith('>'):
+            m = re.match('>(\S+)', line)
+            contig = m.group(1)
+        else:
+            cols = line.split()
+
+            if len(cols) == 5:
+                if cols[1].startswith('tRNA'):
+                    feat_type = 'tRNA'
+                elif cols[1].startswith('tmRNA'):
+                    feat_type = 'tmRNA'
+                elif cols[1].startswith('mtRNA'):
+                    feat_type = 'mtRNA'
+                else:
+                    raise Exception("Unexpected type in ARAGORN, column value: {0}".format(cols[1]))
+
+                #feat_base = "{0}_{1}".format(feat_type, uuid.uuid4())
+                #gene_id = "{0}_gene".format(feat_base)
+                #RNA_id = "{0}_{1}".format(feat_base, feat_type)
+                name = cols[1]
+                anticodon = cols[4][1:4].upper()
+                #print (cols)
+                m = re.match('(c*)\[(\d+),(\d+)\]', cols[2])
+                if m:
+                    start = int(m.group(2)) - 1
+                    end = int(m.group(3))
+                if m.group(1):
+                    rstrand = -1
+                else:
+                    rstrand = 1
+                res.append([contig, name, feat_type, start, end, anticodon])
+
+    res = pd.DataFrame(res, columns=['contig', 'name', 'feat_type', 'start', 'end', 'anticodon'])
+    return res

@@ -357,7 +357,7 @@ class PlotViewer(QDialog):
         self.setGeometry(QtCore.QRect(200, 200, 600, 600))
         self.grid = QGridLayout()
         self.setLayout(self.grid)
-        self.show()
+        #self.show()
         self.show_figure()
         return
 

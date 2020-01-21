@@ -410,7 +410,7 @@ class pygenefinderApp(QMainWindow):
         featsdf.length.hist(ax=ax)
 
         i = self.right_tabs.addTab(w, name)
-        self.tabs.setCurrentIndex(i)
+        self.right_tabs.setCurrentIndex(i)
         return w
 
     def show_annotation_report(self):

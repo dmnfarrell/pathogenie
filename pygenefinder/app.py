@@ -22,7 +22,7 @@
 
 from __future__ import absolute_import, print_function
 import sys,os,subprocess,glob,re
-import urllib
+import urllib, hashlib
 import tempfile
 import pandas as pd
 import numpy as np
@@ -231,6 +231,13 @@ def plot_heatmap(m, fig=None, title=''):
     fig.subplots_adjust(hspace=1.2, bottom=.2)
     return
 
+def create_locus_tag(filename):
+
+    x = hashlib.md5(filename.encode('utf-8')).hexdigest()
+    x = ''.join(i for i in x if not i.isdigit())
+    x = x.upper()[:7]
+    return x
+
 def prodigal(infile):
     """Run prodigal"""
 
@@ -258,6 +265,13 @@ def hmmer(threads):
     db = os.path.join(config_path,'hmms','HAMAP.hmm')
     cmd = "hmmscan --noali --notextw --acc -E %e --cpu {t} %d /dev/stdin".format(t=threads)
 
+def aragorn(infile):
+
+    cmd = 'aragorn -l -gcbact -t -w %s -o /tmp/aragorn.txt' %infile
+    tmp = subprocess.check_output(cmd, shell=True)
+    df = tools.read_aragorn('/tmp/aragorn.txt')
+    return df
+
 def default_databases():
     """default blast db table"""
 
@@ -267,7 +281,7 @@ def default_databases():
             'amr':{'filename':'amr.fa','evalue':1e-300}}
     return
 
-def annotate_contigs(infile, prefix='PREF', **kwargs):
+def annotate_contigs(infile, prefix=None, **kwargs):
     """
     Annotate nucelotide sequences (usually a draft assembly with contigs)
     using prodigal and blast to prokka seqs. Writes a genbank file to the
@@ -279,6 +293,8 @@ def annotate_contigs(infile, prefix='PREF', **kwargs):
         a list of SeqRecords with the features
     """
 
+    if prefix == None:
+        prefix = create_locus_tag(infile)
     dbs = ['IS','amr','sprot']
     evalues = [1e-10,1e-100,1e-4]
     ident = 60
@@ -317,7 +333,6 @@ def annotate_contigs(infile, prefix='PREF', **kwargs):
         #get remaining sequences with no hits to this db
         df = df[~df.name.isin(bl.qseqid)]
         seqs = tools.dataframe_to_seqrecords(df, idkey='name')
-        #print (seqs[:1])
         #print (found)
         res.append(found)
         print ('%s sequences unassigned' %len(df))
@@ -335,8 +350,14 @@ def annotate_contigs(infile, prefix='PREF', **kwargs):
     def get_contig(x):
         return ('_').join(x.split('_')[:-1])
     res['contig'] = res['name'].apply(get_contig)
+    res['feat_type'] = 'cds'
 
-    #we then write the assigned sequences to seqrecord/features
+    #add tRNA results here
+    print ('running aragorn')
+    arag = aragorn(infile)
+    res = pd.concat([res,arag])
+
+    #we then write all found sequences to seqrecord/features
     l=1  #counter for assigning locus tags
     recs = []
     #group by contig and get features for each protein found
@@ -353,7 +374,8 @@ def annotate_contigs(infile, prefix='PREF', **kwargs):
         df = df.sort_values('start')
         for i,row in df.iterrows():
             tag = '{p}_{l:04d}'.format(p=prefix,l=l)
-            quals = {'gene':row.gene,'product':row['product'],'locus_tag':tag,'prodigal_id':row.qseqid,'translation':row.sequence}
+            quals = {'gene':row.gene,'product':row['product'],'locus_tag':tag, # 'prodigal_id':row.qseqid,
+                    'translation':row.sequence}
             feat = SeqFeature(FeatureLocation(row.start,row.end,row.strand), strand=row.strand,
                               type="CDS", qualifiers=quals)
             rec.features.append(feat)
