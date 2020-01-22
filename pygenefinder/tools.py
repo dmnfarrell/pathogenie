@@ -95,7 +95,7 @@ def dataframe_to_seqrecords(df, seqkey='sequence', idkey='id', desckey='descript
 
     seqs=[]
     for i,r in df.iterrows():
-        s=SeqRecord(Seq(r[seqkey]),id=r[idkey],description=r[desckey])
+        s = SeqRecord(Seq(r[seqkey]),id=r[idkey],description=r[desckey])
         seqs.append(s)
     return seqs
 
@@ -367,12 +367,14 @@ def align_reads(file1, file2, idx, out):
 	return
 
 def align_info(bamfile):
+
     cmd = 'samtools flagstat %s' %bamfile
     temp=subprocess.check_output(cmd, shell=True)
     print (temp)
     return
 
 def variants_call(name, ref, out):
+
     bamfile = '%s/%s.bam' %(out,name)
     cmd = 'samtools sort {b} > {b}.sorted && samtools index {b}.sorted'.format(b=bamfile)
     print (cmd)
@@ -428,6 +430,7 @@ def retrieve_sequences(id_list):
     return recs
 
 def recs_to_fasta(recs, outfile):
+
     res=[]
     for i in recs:
         r=recs[i]
@@ -437,6 +440,7 @@ def recs_to_fasta(recs, outfile):
     return
 
 def recs_to_genbank(recs, outfile):
+    """Write seqrecords to genbank file"""
 
     handle = open(outfile,'w+')
     for rec in recs:
@@ -717,7 +721,7 @@ def read_aragorn(infile):
                     rstrand = -1
                 else:
                     rstrand = 1
-                res.append([contig, name, feat_type, start, end, anticodon])
+                res.append([contig, name, feat_type, start, end, anticodon, rstrand])
 
-    res = pd.DataFrame(res, columns=['contig', 'name', 'feat_type', 'start', 'end', 'anticodon'])
+    res = pd.DataFrame(res, columns=['contig', 'product', 'feat_type', 'start', 'end', 'anticodon', 'strand'])
     return res

@@ -77,7 +77,7 @@ class pygenefinderApp(QMainWindow):
         left = QWidget(self.m)
         #mainlayout.addWidget(left)
         self.opts = AppOptions(parent=self.m)
-        dialog = self.opts.showDialog(left, wrap=2)
+        dialog = self.opts.showDialog(left, wrap=1, section_wrap=1)
         left.setFixedWidth(250)
         center = QWidget(self.m)#, orientation=QtCore.Qt.Vertical)
         #mainlayout.addWidget(center)
@@ -407,14 +407,15 @@ class pygenefinderApp(QMainWindow):
         ax = w.ax
         recs = self.annotations[name]
         featsdf = tools.records_to_dataframe(recs)
-        featsdf.length.hist(ax=ax)
-
+        #featsdf.length.hist(ax=ax)
+        featsdf['category'] = featsdf['product'].apply(tools.apply_cat)
+        cats = featsdf.category.value_counts()
+        cats.plot.pie(ax=ax)
         i = self.right_tabs.addTab(w, name)
         self.right_tabs.setCurrentIndex(i)
         return w
 
     def show_annotation_report(self):
-
 
         return
 
@@ -463,21 +464,26 @@ class pygenefinderApp(QMainWindow):
         return
 
     def show_feature(self, row):
+        """SHow feature details"""
 
         index = self.tabs.currentIndex()
         name = self.tabs.tabText(index)
-        df = self.sheets[name]['data']
+        table = self.tabs.widget(index)
+        #df = self.sheets[name]['data']
+        df = table.model.df
         data = df.iloc[row]
         self.show_info(data.to_string())
         return
 
     def annotate_files(self, progress_callback):
         """Run gene annotation for input files.
-        progress_callback: signal"""
+        progress_callback: signal for indicating progress in gui
+        """
 
         self.running = True
         self.opts.applyOptions()
         kwds = self.opts.kwds
+        overwrite = kwds['overwrite']
         #self.inputs = self.fasta_table.getDataFrame()
         inputs = self.fasta_table.model.df
         rows = self.fasta_table.getSelectedRows()
@@ -489,12 +495,12 @@ class pygenefinderApp(QMainWindow):
             if not os.path.exists(self.outputdir):
                 os.makedirs(self.outputdir)
             outfile = os.path.join(self.outputdir, row.label + '.gbk')
-            if row.label in self.annotations:
+            if overwrite == False and row.label in self.annotations:
                 msg = 'Annotation exists, skipping'
                 progress_callback.emit(msg)
                 continue
             progress_callback.emit(row.filename)
-            fdf,recs = app.annotate_contigs(row.filename, threads=int(kwds['threads']))
+            fdf,recs = app.run_annotation(row.filename, threads=int(kwds['threads']))
             tools.recs_to_genbank(recs, outfile)
             inputs.loc[i,'genbank'] = outfile
             self.fasta_table.refresh()
@@ -846,12 +852,14 @@ class AppOptions(widgets.BaseOptions):
         self.kwds = {}
         dbs = app.db_names
         cpus = [str(i) for i in range(1,os.cpu_count()+1)]
-        self.groups = {'blast':['db','identity','coverage','threads','multiple hits']}
-        self.opts = {'db':{'type':'combobox','default':'card',
+        self.groups = {'general':['threads','overwrite'],
+                       'blast':['db','identity','coverage','multiple hits'],}
+        self.opts = {'threads':{'type':'combobox','default':4,'items':cpus},
+                    'overwrite':{'type':'checkbox','default':True},
+                    'db':{'type':'combobox','default':'card',
                     'items':dbs,'label':'database'},
                     'identity':{'type':'entry','default':90},
                     'coverage':{'type':'entry','default':50},
-                    'threads':{'type':'combobox','default':4,'items':cpus},
                     'multiple hits':{'type':'checkbox','default':False}
                     }
         return

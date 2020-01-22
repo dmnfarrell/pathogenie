@@ -266,8 +266,12 @@ def hmmer(threads):
     cmd = "hmmscan --noali --notextw --acc -E %e --cpu {t} %d /dev/stdin".format(t=threads)
 
 def aragorn(infile):
+    """Run aragorn"""
 
-    cmd = 'aragorn -l -gcbact -t -w %s -o /tmp/aragorn.txt' %infile
+    cmd = 'aragorn'
+    if getattr(sys, 'frozen', False):
+        cmd = tools.resource_path('bin/aragorn.exe')
+    cmd = '{c} -l -gcbact -t -w {i} -o /tmp/aragorn.txt'.format(c=cmd,i=infile)
     tmp = subprocess.check_output(cmd, shell=True)
     df = tools.read_aragorn('/tmp/aragorn.txt')
     return df
@@ -281,7 +285,7 @@ def default_databases():
             'amr':{'filename':'amr.fa','evalue':1e-300}}
     return
 
-def annotate_contigs(infile, prefix=None, **kwargs):
+def run_annotation(infile, prefix=None, **kwargs):
     """
     Annotate nucelotide sequences (usually a draft assembly with contigs)
     using prodigal and blast to prokka seqs. Writes a genbank file to the
@@ -350,12 +354,15 @@ def annotate_contigs(infile, prefix=None, **kwargs):
     def get_contig(x):
         return ('_').join(x.split('_')[:-1])
     res['contig'] = res['name'].apply(get_contig)
-    res['feat_type'] = 'cds'
+    res['feat_type'] = 'CDS'
+    res = res.reset_index()
 
     #add tRNA results here
     print ('running aragorn')
     arag = aragorn(infile)
-    res = pd.concat([res,arag])
+    res = pd.concat([res,arag], sort=False)
+    res = res.fillna('')
+    res['translation'] = res.sequence
 
     #we then write all found sequences to seqrecord/features
     l=1  #counter for assigning locus tags
@@ -371,13 +378,18 @@ def annotate_contigs(infile, prefix=None, **kwargs):
         rec.seq.alphabet = generic_dna
         rec.id = label
         rec.name = label
+        rec.COMMENT = 'annotated with pygenefinder'
         df = df.sort_values('start')
         for i,row in df.iterrows():
-            tag = '{p}_{l:04d}'.format(p=prefix,l=l)
-            quals = {'gene':row.gene,'product':row['product'],'locus_tag':tag, # 'prodigal_id':row.qseqid,
-                    'translation':row.sequence}
+            row['locus_tag'] = '{p}_{l:05d}'.format(p=prefix,l=l)
+            if row.feat_type == 'CDS':
+                qcols = ['gene','product','locus_tag','translation']
+            else:
+                qcols = ['product','locus_tag']
+            quals = row[qcols].to_dict()
+
             feat = SeqFeature(FeatureLocation(row.start,row.end,row.strand), strand=row.strand,
-                              type="CDS", qualifiers=quals)
+                              type=row.feat_type, qualifiers=quals)
             rec.features.append(feat)
             l+=1
         #print(rec.format("gb"))

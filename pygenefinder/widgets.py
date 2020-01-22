@@ -71,6 +71,7 @@ def dialogFromOptions(parent, opts, sections=None,
     l.setSpacing(2)
     l.setAlignment(QtCore.Qt.AlignLeft)
     scol=1
+    srow=1
     for s in sections:
         row=1
         col=1
@@ -79,9 +80,10 @@ def dialogFromOptions(parent, opts, sections=None,
         f.setTitle(s)
         #f.resize(50,100)
         #f.sizeHint()
-        l.addWidget(f,1,scol)
+        l.addWidget(f,srow,scol)
         gl = QGridLayout(f)
         gl.setAlignment(QtCore.Qt.AlignTop)
+        srow+=1
         #gl.setSpacing(10)
         for o in sections[s]:
             label = o
