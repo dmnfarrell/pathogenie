@@ -404,13 +404,16 @@ class pygenefinderApp(QMainWindow):
         data = df.iloc[row]
         name = data.label
         w = widgets.PlotViewer(self)
-        ax = w.ax
+        import pylab as plt
+        fig,ax = plt.subplots(2,1, figsize=(7,5), dpi=65, facecolor=(1,1,1), edgecolor=(0,0,0))
+        axs=ax.flat
+        w.show_figure(fig)
         recs = self.annotations[name]
         featsdf = tools.records_to_dataframe(recs)
         #featsdf.length.hist(ax=ax)
         featsdf['category'] = featsdf['product'].apply(tools.apply_cat)
         cats = featsdf.category.value_counts()
-        cats.plot.pie(ax=ax)
+        cats.plot.pie(ax=axs[0])
         i = self.right_tabs.addTab(w, name)
         self.right_tabs.setCurrentIndex(i)
         return w
@@ -853,14 +856,16 @@ class AppOptions(widgets.BaseOptions):
         dbs = app.db_names
         cpus = [str(i) for i in range(1,os.cpu_count()+1)]
         self.groups = {'general':['threads','overwrite'],
-                       'blast':['db','identity','coverage','multiple hits'],}
+                       'blast':['db','identity','coverage','multiple hits'],
+                       'annotation':['hmmer']}
         self.opts = {'threads':{'type':'combobox','default':4,'items':cpus},
                     'overwrite':{'type':'checkbox','default':True},
                     'db':{'type':'combobox','default':'card',
                     'items':dbs,'label':'database'},
                     'identity':{'type':'entry','default':90},
                     'coverage':{'type':'entry','default':50},
-                    'multiple hits':{'type':'checkbox','default':False}
+                    'multiple hits':{'type':'checkbox','default':False},
+                    'hmmer':{'type':'checkbox','default':True},
                     }
         return
 

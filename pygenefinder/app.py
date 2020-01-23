@@ -40,6 +40,7 @@ module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'data')
 dbdir = os.path.join(config_path, 'db')
 customdbdir = os.path.join(config_path, 'custom')
+hmmdir = os.path.join(config_path, 'hmms')
 prokkadbdir = os.path.join(config_path, 'prokka')
 prokka_db_names = ['sprot','IS','AMR']
 links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequences',
@@ -53,7 +54,8 @@ links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequenc
         'amr':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/AMR',
         'IS':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/IS',
         'bacteria.16SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.16SrRNA.fna',
-        'bacteria.23SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.23SrRNA.fna'}
+        'bacteria.23SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.23SrRNA.fna',
+        'HAMAP.hmm':'https://github.com/tseemann/prokka/raw/master/db/hmm/HAMAP.hmm'  }
 
 hmm = 'https://github.com/tseemann/prokka/raw/master/db/hmm/HAMAP.hmm'
 
@@ -75,7 +77,7 @@ def check_databases():
         fetch_sequence_from_url(name)
     return
 
-def fetch_sequence_from_url(name='card', path=None):
+def fetch_sequence_from_url(name='card', path=None, ext='.fa'):
     """get sequences"""
 
     if path == None:
@@ -88,11 +90,9 @@ def fetch_sequence_from_url(name='card', path=None):
     else:
         print('no such name')
         return
-    ext='fa'
-    #if os.path.splitext(url)[1] == '.gz':
-    #    ext='fa.gz'
-    filename = os.path.join(path,"%s.%s" %(name,ext))
-    #print (filename)
+
+    filename = os.path.join(path,"%s%s" %(name,ext))
+    print (filename)
     if not os.path.exists(filename):
         try:
             urllib.request.urlretrieve(url, filename)
@@ -260,10 +260,34 @@ def prokka_header_info(x):
     s = re.split('~~~',x)
     return pd.Series(s)
 
-def hmmer(threads):
+def hmmer(infile, threads=4, hmm_file=None):
+    """Run hmmer"""
 
-    db = os.path.join(config_path,'hmms','HAMAP.hmm')
-    cmd = "hmmscan --noali --notextw --acc -E %e --cpu {t} %d /dev/stdin".format(t=threads)
+    def get_contig(x):
+        return ('_').join(x.split('_')[:-1])
+    if getattr(sys, 'frozen', False):
+        hmmpresscmd = tools.resource_path('bin/hmmpress.exe')
+        hmmscancmd = tools.resource_path('bin/hmmscan.exe')
+    else:
+        hmmpresscmd = 'hmmpress'
+        hmmscancmd = 'hmmscan'
+    df = tools.fasta_to_dataframe(infile)
+    fetch_sequence_from_url('HAMAP.hmm', hmmdir, ext='')
+    db = os.path.join(hmmdir,'HAMAP.hmm')
+    cmd = '%s -f %s' %(hmmpresscmd,db)
+    tmp = subprocess.check_output(cmd, shell=True)
+    out='hmm.txt'
+    cmd = "{c} --noali --notextw --acc -E 1e-4 --cpu {t} --tblout {o} -o /tmp/hmm.out {db} {i}".format(c=hmmscancmd,t=threads,db=db,i=infile,o=out)
+    print (cmd)
+    tmp = subprocess.check_output(cmd, shell=True)
+    h = tools.read_hmmer3('hmm.txt')
+    #print (df)
+    df = h.merge(df,on='name',how='left')
+    #print (df)
+    #get coords from prodigal fasta heading if available
+    df[['start','end','strand']] = df.description.apply(get_prodigal_coords,1)
+    df['contig'] = df['name'].apply(get_contig)
+    return df
 
 def aragorn(infile):
     """Run aragorn"""
@@ -285,27 +309,35 @@ def default_databases():
             'amr':{'filename':'amr.fa','evalue':1e-300}}
     return
 
-def run_annotation(infile, prefix=None, **kwargs):
+def run_annotation(infile, prefix=None, ident=70, threads=4, **kwargs):
     """
     Annotate nucelotide sequences (usually a draft assembly with contigs)
     using prodigal and blast to prokka seqs. Writes a genbank file to the
     same folder.
     Args:
+        prefix: prefix for locus_tags
         infile: input fasta file
         outfile: output genbank
+        hmmer: run hmmer
     returns:
         a list of SeqRecords with the features
     """
 
+    #get simple name for contig
+    def get_contig(x):
+        return ('_').join(x.split('_')[:-1])
     if prefix == None:
         prefix = create_locus_tag(infile)
     dbs = ['IS','amr','sprot']
     evalues = [1e-10,1e-100,1e-4]
-    ident = 60
     #run prodigal
     resfile = prodigal(infile)
     #read in prodigal fasta to dataframe
     df = tools.fasta_to_dataframe(resfile)
+    df[['start','end','strand']] = df.description.apply(get_prodigal_coords,1)
+    df['feat_type'] = 'CDS'
+    df['contig'] = df['name'].apply(get_contig)
+
     #get target seqs
     seqs = list(SeqIO.parse(resfile,'fasta'))
     #read input file nucleotide seqs
@@ -320,7 +352,7 @@ def run_annotation(infile, prefix=None, **kwargs):
         tools.make_blast_database(dbname, dbtype='prot')
         print ('blasting %s ORFs to %s' %(len(seqs),db))
         bl = tools.blast_sequences(dbname, seqs, maxseqs=1, evalue=evalues[i],
-                                    cmd='blastp', show_cmd=True, **kwargs)
+                                    cmd='blastp', show_cmd=True, threads=threads, **kwargs)
         bl = bl[bl.pident>ident]
         if len(bl)==0:
             i+=1
@@ -328,14 +360,15 @@ def run_annotation(infile, prefix=None, **kwargs):
         bl[['protein_id','gene','product','cog']] = bl.stitle.apply(prokka_header_info,1)
 
         cols = ['qseqid','sseqid','pident','sstart','send','protein_id','gene','product']
-        print (len(bl))
+        #print (len(bl))
         bl = bl.sort_values(['qseqid','pident'], ascending=False).drop_duplicates(['qseqid'])[cols]
-        print (len(bl))
+        #print (len(bl))
 
         #merge blast result with prodigal sequences
         found = df.merge(bl,left_on='name',right_on='qseqid',how='right')
         #get remaining sequences with no hits to this db
         df = df[~df.name.isin(bl.qseqid)]
+        #new sequences to blast in the next iteration
         seqs = tools.dataframe_to_seqrecords(df, idkey='name')
         #print (found)
         res.append(found)
@@ -343,27 +376,38 @@ def run_annotation(infile, prefix=None, **kwargs):
         i+=1
     #all results together
     res = pd.concat(res)
+    #print (res)
+
+    #-------------------------------------------------------
+    #run hmmer on unassigned
+    print ('running hmmer')
+    #write unknowns out
+    SeqIO.write(seqs,'unknowns.fa','fasta')
+    hmmdf = hmmer('unknowns.fa', threads=threads)
+    #print (hmmdf.dtypes)
+    res = pd.concat([res,hmmdf], sort=False)
+
+    #get tRNAs with aragorn
+    print ('running aragorn')
+    arag = aragorn(infile)
+    #print (arag)
+    res = pd.concat([res,arag], sort=False)
 
     #remaining unknowns are hypothetical proteins
     unknown = df[~df.name.isin(res.name)]
     unknown['product'] = 'hypothetical protein'
     res = pd.concat([res,unknown], sort=False)
-    res[['start','end','strand']] = res.description.apply(get_prodigal_coords,1)
-    #print (res)
-    #get simple name for contig
-    def get_contig(x):
-        return ('_').join(x.split('_')[:-1])
-    res['contig'] = res['name'].apply(get_contig)
-    res['feat_type'] = 'CDS'
-    res = res.reset_index()
 
-    #add tRNA results here
-    print ('running aragorn')
-    arag = aragorn(infile)
-    res = pd.concat([res,arag], sort=False)
-    res = res.fillna('')
+    #post process dataframe
+    #res = res.fillna('')
     res['translation'] = res.sequence
+    #res['gene'] = res.gene.fillna('')
+    res = res.reset_index(drop=True)
 
+    #print (res['product'].value_counts())
+    #print (res.dtypes)
+
+    #-------------------------------------------------------
     #we then write all found sequences to seqrecord/features
     l=1  #counter for assigning locus tags
     recs = []
@@ -372,7 +416,7 @@ def run_annotation(infile, prefix=None, **kwargs):
         contig = get_contig(c)
         #truncated label for writing to genbank
         label = ('_').join(c.split('_')[:2])
-        #print (c, len(df), label)
+        print (c, len(df), label)
         nucseq = contigs[c].seq
         rec = SeqRecord(nucseq)
         rec.seq.alphabet = generic_dna
@@ -380,19 +424,17 @@ def run_annotation(infile, prefix=None, **kwargs):
         rec.name = label
         rec.COMMENT = 'annotated with pygenefinder'
         df = df.sort_values('start')
+        qcols = ['gene','product','locus_tag','translation']
         for i,row in df.iterrows():
             row['locus_tag'] = '{p}_{l:05d}'.format(p=prefix,l=l)
-            if row.feat_type == 'CDS':
-                qcols = ['gene','product','locus_tag','translation']
-            else:
-                qcols = ['product','locus_tag']
-            quals = row[qcols].to_dict()
-
+            row = row.dropna()
+            cols = [c for c in qcols if c in row.index]
+            quals = row[cols].to_dict()
+            #print (quals)
             feat = SeqFeature(FeatureLocation(row.start,row.end,row.strand), strand=row.strand,
                               type=row.feat_type, qualifiers=quals)
             rec.features.append(feat)
             l+=1
-        #print(rec.format("gb"))
         recs.append(rec)
     return res,recs
 

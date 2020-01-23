@@ -360,16 +360,17 @@ class PlotViewer(QDialog):
         self.grid = QGridLayout()
         self.setLayout(self.grid)
         #self.show()
-        self.show_figure()
+        #self.show_figure()
         return
 
-    def show_figure(self):
+    def show_figure(self, fig):
 
         from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
         import matplotlib.pyplot as plt
-        fig,ax = plt.subplots(figsize=(7,5), dpi=65, facecolor=(1,1,1), edgecolor=(0,0,0))
+
         #ax.plot(range(10))
         canvas = FigureCanvas(fig)
         self.grid.addWidget(canvas)
-        self.ax = ax
+        self.fig = fig
+        #self.ax = ax
         return

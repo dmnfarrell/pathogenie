@@ -160,6 +160,7 @@ def features_to_dataframe(features, cds=False, id=''):
         d['end'] = f.location.end
         d['strand'] = f.location.strand
         d['id'] = id
+        d['feat_type'] = f.type
         for i in quals:
             if i in x:
                 if type(x[i]) is list:
@@ -167,7 +168,7 @@ def features_to_dataframe(features, cds=False, id=''):
                 else:
                     d[i] = x[i]
         allfeat.append(d)
-    quals = list(quals.keys())+['id','start','end','strand']
+    quals = list(quals.keys())+['id','start','end','strand','feat_type']
     df = pd.DataFrame(allfeat,columns=quals)
     if 'translation' in df.keys():
         df['length'] = df.translation.astype('str').str.len()
@@ -680,6 +681,26 @@ def abricate(filename, db='card',id=None):
     df = pd.read_csv('temp.tab',sep='\t')
     id = os.path.basename(filename)
     df['id'] = id
+    return df
+
+def read_hmmer3(infile):
+    """read hmmer3 tab file and return dataframe"""
+
+    def descr_info(x):
+        s = re.split('~~~',x)
+        return pd.Series(s)
+    from Bio import SearchIO
+    p = SearchIO.parse(infile, 'hmmer3-tab')
+    res=[]
+    for qr in p:
+        hit= qr.hits[0]
+        res.append([qr.id, hit.id, hit.bitscore,hit.evalue,hit.description])
+    cols = ['name','query','score','evalue','description']
+    df = pd.DataFrame(res,columns=cols)
+    df[['EC','gene','product']] = df.description.apply(lambda x: descr_info(x))
+    df = df.drop(columns=['description'])
+    df = df.drop_duplicates('query')
+    df['feat_type'] = 'CDS'
     return df
 
 def read_aragorn(infile):

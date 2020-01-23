@@ -1,6 +1,7 @@
 numpy
 pandas
 biopython
+bcbio-gff
 matplotlib
 future
 pyside2
