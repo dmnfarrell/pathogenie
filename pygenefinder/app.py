@@ -232,8 +232,10 @@ def plot_heatmap(m, fig=None, title=''):
     return
 
 def create_locus_tag(filename):
+    """Create a genbank style locus tag"""
 
-    x = hashlib.md5(filename.encode('utf-8')).hexdigest()
+    name = os.path.basename(filename)
+    x = hashlib.md5(name.encode('utf-8')).hexdigest()
     x = ''.join(i for i in x if not i.isdigit())
     x = x.upper()[:7]
     return x
@@ -276,8 +278,9 @@ def hmmer(infile, threads=4, hmm_file=None):
     db = os.path.join(hmmdir,'HAMAP.hmm')
     cmd = '%s -f %s' %(hmmpresscmd,db)
     tmp = subprocess.check_output(cmd, shell=True)
-    out='hmm.txt'
-    cmd = "{c} --noali --notextw --acc -E 1e-4 --cpu {t} --tblout {o} -o /tmp/hmm.out {db} {i}".format(c=hmmscancmd,t=threads,db=db,i=infile,o=out)
+    outfile = os.path.join(tempdir, 'hmm.txt')
+    cmd = "{c} --noali --notextw --acc -E 1e-4 --cpu {t} --tblout {o} -o hmm.out {db} {i}".format(
+                                c=hmmscancmd,t=threads,db=db,i=infile,o=outfile)
     print (cmd)
     tmp = subprocess.check_output(cmd, shell=True)
     h = tools.read_hmmer3('hmm.txt')
@@ -292,12 +295,13 @@ def hmmer(infile, threads=4, hmm_file=None):
 def aragorn(infile):
     """Run aragorn"""
 
+    outfile = os.path.join(tempdir, 'aragorn.txt')
     cmd = 'aragorn'
     if getattr(sys, 'frozen', False):
         cmd = tools.resource_path('bin/aragorn.exe')
-    cmd = '{c} -l -gcbact -t -w {i} -o /tmp/aragorn.txt'.format(c=cmd,i=infile)
+    cmd = '{c} -l -gcbact -t -w {i} -o {o}'.format(c=cmd,i=infile,o=outfile)
     tmp = subprocess.check_output(cmd, shell=True)
-    df = tools.read_aragorn('/tmp/aragorn.txt')
+    df = tools.read_aragorn(outfile)
     return df
 
 def default_databases():

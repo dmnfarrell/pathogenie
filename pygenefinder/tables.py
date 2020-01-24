@@ -408,7 +408,7 @@ class FilesTable(DataFrameTable):
 
     def deleteRows(self, rows):
 
-        idx = self.model.df.index[rows]        
+        idx = self.model.df.index[rows]
         self.model.df = self.model.df.drop(idx)
         self.refresh()
         return
@@ -455,10 +455,10 @@ class FeaturesTable(DataFrameTable):
     def addActions(self, event, row):
 
         menu = self.menu
-        showfeatureAction = menu.addAction("Show Feature")
+        showfeatureAction = menu.addAction("Draw Feature")
         copysequenceAction = menu.addAction("Copy Sequence")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showfeatureAction:
-            self.app.show_feature(row)
+            self.app.plot_feature(row)
         elif action == copysequenceAction:
             self.app.copy_sequence(row)

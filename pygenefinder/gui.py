@@ -92,7 +92,7 @@ class pygenefinderApp(QMainWindow):
         self.tabs.tabCloseRequested.connect(self.close_tab)
         l.addWidget(self.tabs)
 
-        right = QWidget(self.m)
+        self.right = right = QWidget(self.m)
         l2 = QVBoxLayout(right)
         #mainlayout.addWidget(right)
         self.right_tabs = QTabWidget(right)
@@ -449,7 +449,7 @@ class pygenefinderApp(QMainWindow):
         if name not in self.annotations:
             self.info.append('no annotation for this file')
             return
-        w = widgets.SeqFeaturesViewer(self)
+        w = widgets.FileViewer(self)
         recs = self.annotations[name]
         w.show_records(recs)
         return
@@ -462,20 +462,25 @@ class pygenefinderApp(QMainWindow):
         data = df.iloc[row]
         name = data.label
         recs = self.annotations[name]
-        w = widgets.SeqFeaturesViewer(self)
+        w = widgets.FileViewer(self)
         w.show_records(recs, format='gff')
         return
 
-    def show_feature(self, row):
-        """SHow feature details"""
+    def plot_feature(self, row):
+        """Show feature details"""
 
         index = self.tabs.currentIndex()
         name = self.tabs.tabText(index)
         table = self.tabs.widget(index)
         #df = self.sheets[name]['data']
         df = table.model.df
-        data = df.iloc[row]
-        self.show_info(data.to_string())
+        data = df.iloc[row]        
+        recs = self.annotations[name]
+
+        s = widgets.SeqFeaturesViewer(self)
+        s.records = recs
+        s.update(data.start-1000, data.end+1000)
+        s.show()
         return
 
     def annotate_files(self, progress_callback):

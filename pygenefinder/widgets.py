@@ -284,12 +284,12 @@ class BaseOptions(object):
         self.setWidgetValue(key, new)
         return
 
-class SeqFeaturesViewer(QDialog):
+class FileViewer(QDialog):
     """Sequence records features viewer"""
     def __init__(self, parent=None, filename=None):
 
         #QDialog.__init__(self)
-        super(SeqFeaturesViewer, self).__init__(parent)
+        super(FileViewer, self).__init__(parent)
         self.ed = ed = QPlainTextEdit(self, readOnly=True)
         #ed.setStyleSheet("font-family: monospace; font-size: 14px;")
         font = QFont("Monospace")
@@ -322,6 +322,58 @@ class SeqFeaturesViewer(QDialog):
         recnames = list(recs.keys())
         self.recselect.addItems(recnames)
         self.recselect.setCurrentIndex(0)
+        return
+
+class SeqFeaturesViewer(QDialog):
+    """Sequence records features viewer using dna_features_viewer"""
+    def __init__(self, parent=None, filename=None):
+
+        super(SeqFeaturesViewer, self).__init__(parent)
+        self.setWindowTitle('sequence features')
+        self.setGeometry(QtCore.QRect(200, 200, 800, 200))
+        self.add_widgets()
+        return
+
+    def add_widgets(self):
+
+        l = QVBoxLayout(self)
+        self.setLayout(l)
+        val=0
+        buttons = QWidget()
+        l.addWidget(buttons)
+        bl = QHBoxLayout(buttons)
+        slider = QSlider(Qt.Horizontal)
+        bl.addWidget(slider)
+        loclbl = QLabel('start')
+        bl.addWidget(loclbl)
+        w = self.start = QLineEdit()
+        w.setText(str(val))
+        #bl.addWidget(self.start)
+        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+        import matplotlib.pyplot as plt
+        fig,ax = plt.subplots(1,1,figsize=(15,2))
+        canvas = FigureCanvas(fig)
+        l.addWidget(canvas)
+        self.ax = ax
+        return
+
+    def load_records(self, recs):
+
+        return
+
+    def update(self, start, end):
+        """Plot the features"""
+
+        from dna_features_viewer import GraphicFeature, GraphicRecord
+        from dna_features_viewer import BiopythonTranslator
+        #fig=self.fig
+        ax=self.ax
+        if start<0:
+            start=0
+        rec = self.records[0]
+        graphic_record = BiopythonTranslator().translate_record(rec)
+        cropped_record = graphic_record.crop((start, end))
+        ax, _ = cropped_record.plot( strand_in_label_threshold=7, ax=ax)
         return
 
 class AlignmentViewer(QDialog):
