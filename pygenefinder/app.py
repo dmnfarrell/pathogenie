@@ -42,7 +42,9 @@ dbdir = os.path.join(config_path, 'db')
 customdbdir = os.path.join(config_path, 'custom')
 hmmdir = os.path.join(config_path, 'hmms')
 prokkadbdir = os.path.join(config_path, 'prokka')
-prokka_db_names = ['sprot','IS','AMR']
+db_names = ['card','resfinder','argannot','ncbi','plasmidfinder','ecoh','vfdb',
+            'bacteria.16SrRNA','bacteria.23SrRNA']
+prokka_db_names = ['sprot_bacteria','sprot_viruses','IS','AMR']
 links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequences',
         'resfinder':'https://raw.githubusercontent.com/tseemann/abricate/master/db/resfinder/sequences',
         'vfdb':'https://raw.githubusercontent.com/tseemann/abricate/master/db/vfdb/sequences',
@@ -50,7 +52,9 @@ links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequenc
         'argannot':'https://raw.githubusercontent.com/tseemann/abricate/master/db/argannot/sequences',
         'ecoh':'https://raw.githubusercontent.com/tseemann/abricate/master/db/ecoh/sequences',
         'plasmidfinder':'https://raw.githubusercontent.com/tseemann/abricate/master/db/plasmidfinder/sequences',
-        'sprot':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/sprot',
+        'sprot_bacteria':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/sprot',
+        'sprot_viruses':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Viruses/sprot',
+        'sprot_archaea':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Archaea/sprot',
         'amr':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/AMR',
         'IS':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/IS',
         'bacteria.16SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.16SrRNA.fna',
@@ -65,9 +69,6 @@ if not os.path.exists(config_path):
     except:
         os.makedirs(config_path)
 
-db_names = ['card','resfinder','argannot','ncbi','plasmidfinder','ecoh','vfdb',
-            'bacteria.16SrRNA','bacteria.23SrRNA']
-
 def check_databases():
     """download databases"""
 
@@ -75,6 +76,23 @@ def check_databases():
     os.makedirs(dbdir, exist_ok=True)
     for name in db_names:
         fetch_sequence_from_url(name)
+    return
+
+def fetch_binaries():
+    """Get windows binaries -- windows only"""
+
+    url = "https://github.com/dmnfarrell/pygenefinder/raw/master/win_binaries/"
+    path = os.path.join(config_path, 'binaries')
+    os.makedirs(path, exist_ok=True)
+    names = ['aragorn.exe','blastn.exe','blastp.exe','makeblastdb.exe',
+            'hmmscan.exe','hmmpress.exe','prodigal.exe','msys-2.0.dll','clustalw2.exe']
+    for n in names:
+        filename = os.path.join(path,n)
+        if os.path.exists(filename):
+            continue
+        link = os.path.join(url,n)
+        print (filename,link)
+        urllib.request.urlretrieve(link, filename)
     return
 
 def fetch_sequence_from_url(name='card', path=None, ext='.fa'):
@@ -248,7 +266,7 @@ def prodigal(infile):
         cmd = tools.resource_path('bin/prodigal.exe')
     #name = os.path.splitext(infile)[0]
     name = os.path.join(tempdir,'prodigal')
-    cmd = '{c} -i {i} -a {n}.faa -f gff -o {n}.gff -p single'.format(i=infile,c=cmd,n=name)
+    cmd = '{c} -i {i} -c -m -a {n}.faa -f gff -o {n}.gff -p single'.format(i=infile,c=cmd,n=name)
     subprocess.check_output(cmd, shell=True)
     resfile = os.path.join(tempdir, 'prodigal.faa')
     return resfile
@@ -308,12 +326,13 @@ def default_databases():
     """default blast db table"""
 
     path = os.path.join(config_path, 'blast_dbs.csv')
-    df = {'sprot':{'filename':'sprot.fa','evalue':1e-10},
+    df = {'sprot_bacteria':{'filename':'sprot_bacteria.fa','evalue':1e-10},
+          'sprot_viruses':{'filename':'sprot_viruses.fa','evalue':1e-10},
             'IS':{'filename':'IS.fa','evalue':1e-30},
             'amr':{'filename':'amr.fa','evalue':1e-300}}
     return
 
-def run_annotation(infile, prefix=None, ident=70, threads=4, **kwargs):
+def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria', **kwargs):
     """
     Annotate nucelotide sequences (usually a draft assembly with contigs)
     using prodigal and blast to prokka seqs. Writes a genbank file to the
@@ -332,7 +351,8 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, **kwargs):
         return ('_').join(x.split('_')[:-1])
     if prefix == None:
         prefix = create_locus_tag(infile)
-    dbs = ['IS','amr','sprot']
+    sprot = 'sprot_%s' %kingdom
+    dbs = ['IS','amr',sprot]
     evalues = [1e-10,1e-100,1e-4]
     #run prodigal
     resfile = prodigal(infile)
@@ -384,12 +404,13 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, **kwargs):
 
     #-------------------------------------------------------
     #run hmmer on unassigned
-    print ('running hmmer')
-    #write unknowns out
-    SeqIO.write(seqs,'unknowns.fa','fasta')
-    hmmdf = hmmer('unknowns.fa', threads=threads)
-    #print (hmmdf.dtypes)
-    res = pd.concat([res,hmmdf], sort=False)
+    if kingdom == 'bacteria':
+        print ('running hmmer')
+        #write unknowns out
+        SeqIO.write(seqs,'unknowns.fa','fasta')
+        hmmdf = hmmer('unknowns.fa', threads=threads)
+        #print (hmmdf.dtypes)
+        res = pd.concat([res,hmmdf], sort=False)
 
     #get tRNAs with aragorn
     print ('running aragorn')
@@ -398,7 +419,7 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, **kwargs):
     res = pd.concat([res,arag], sort=False)
 
     #remaining unknowns are hypothetical proteins
-    unknown = df[~df.name.isin(res.name)]
+    unknown = df[~df.name.isin(res.name)].copy()
     unknown['product'] = 'hypothetical protein'
     res = pd.concat([res,unknown], sort=False)
 

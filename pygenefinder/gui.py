@@ -474,13 +474,22 @@ class pygenefinderApp(QMainWindow):
         table = self.tabs.widget(index)
         #df = self.sheets[name]['data']
         df = table.model.df
-        data = df.iloc[row]        
+        data = df.iloc[row]
         recs = self.annotations[name]
 
         s = widgets.SeqFeaturesViewer(self)
-        s.records = recs
-        s.update(data.start-1000, data.end+1000)
+        s.load_records(recs)
+        s.update(data.start-2000, data.end+2000)
         s.show()
+        return
+
+    def add_annotatation(self):
+        """Add an annotation from an external file"""
+
+        filename, _ = QFileDialog.getOpenFileName(self, 'Open File', './',
+                                        filter="Genbank Files(*.gb *.gbk);;All Files(*.*)")
+        if not filename:
+            return
         return
 
     def annotate_files(self, progress_callback):
@@ -492,6 +501,7 @@ class pygenefinderApp(QMainWindow):
         self.opts.applyOptions()
         kwds = self.opts.kwds
         overwrite = kwds['overwrite']
+        kingdom = kwds['kingdom']
         #self.inputs = self.fasta_table.getDataFrame()
         inputs = self.fasta_table.model.df
         rows = self.fasta_table.getSelectedRows()
@@ -508,7 +518,7 @@ class pygenefinderApp(QMainWindow):
                 progress_callback.emit(msg)
                 continue
             progress_callback.emit(row.filename)
-            fdf,recs = app.run_annotation(row.filename, threads=int(kwds['threads']))
+            fdf,recs = app.run_annotation(row.filename, threads=int(kwds['threads']), kingdom=kingdom)
             tools.recs_to_genbank(recs, outfile)
             inputs.loc[i,'genbank'] = outfile
             self.fasta_table.refresh()
@@ -859,10 +869,11 @@ class AppOptions(widgets.BaseOptions):
         self.parent = parent
         self.kwds = {}
         dbs = app.db_names
+        kingdom = ['bacteria','viruses','archaea']
         cpus = [str(i) for i in range(1,os.cpu_count()+1)]
         self.groups = {'general':['threads','overwrite'],
                        'blast':['db','identity','coverage','multiple hits'],
-                       'annotation':['hmmer']}
+                       'annotation':['kingdom','hmmer']}
         self.opts = {'threads':{'type':'combobox','default':4,'items':cpus},
                     'overwrite':{'type':'checkbox','default':True},
                     'db':{'type':'combobox','default':'card',
@@ -870,6 +881,8 @@ class AppOptions(widgets.BaseOptions):
                     'identity':{'type':'entry','default':90},
                     'coverage':{'type':'entry','default':50},
                     'multiple hits':{'type':'checkbox','default':False},
+                    'kingdom':{'type':'combobox','default':'bacteria',
+                    'items':kingdom,'label':'kingdom'},
                     'hmmer':{'type':'checkbox','default':True},
                     }
         return

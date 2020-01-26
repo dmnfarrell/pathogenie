@@ -2,6 +2,17 @@
 CHANGES
 =======
 
+0.2.0
+------
+
+* renamed to pygenefinder
+* converted gui to use pyside2
+* added project files
+* prokka type genome annotation with blast/prodigal/hmmer and aragorn
+* can view features in tables
+* dna_features_viewer for viewing annotations
+* threading and progress bar for processes
+
 0.1.0
 ------
 
@@ -9,11 +20,3 @@ CHANGES
 * run on a selection of reference dbs from abricate
 * view tables of results and a summary plot
 * windows gui standalone version
-
-0.2.0
-------
-
-* renamed to pygenefinder
-* added project files
-* basic genome annotation with blast and prodigal
-* can view features in tables

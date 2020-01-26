@@ -371,7 +371,7 @@ class FilesTable(DataFrameTable):
 
         menu = self.menu
         fileinfoAction = menu.addAction("File Summary")
-        #annotateAction = menu.addAction("Annotate")
+        addAnnotationAction = menu.addAction("Add Annotation From File")
         showFeaturesAction = menu.addAction("Show Feature Table")
         showGenbankAction = menu.addAction("Show Genbank File")
         showGFFAction = menu.addAction("Show GFF File")
@@ -387,6 +387,8 @@ class FilesTable(DataFrameTable):
         #elif action == annotateAction:
             #self.app.annotate_files()
             #lambda: self.run_threaded_process(self.annotate_files, self.annotation_completed))
+        elif action == addAnnotationAction:
+            self.app.add_annotatation()
         elif action == showFeaturesAction:
             self.app.show_feature_table()
         elif action == showGenbankAction:
@@ -430,7 +432,7 @@ class ResultsTable(DataFrameTable):
         showAlignmentAction = menu.addAction("Alignment for all samples")
         #showAlignmentAction = menu.addAction("Alignment for all hits")
         #showAlignmentViewerAction = menu.addAction("Show alignment in viewer")
-        showTreeAction = menu.addAction("Phylo tree for gene")
+        #showTreeAction = menu.addAction("Phylo tree for gene")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showSequencesAction:
             self.app.show_fasta_sequences(row)
@@ -455,7 +457,7 @@ class FeaturesTable(DataFrameTable):
     def addActions(self, event, row):
 
         menu = self.menu
-        showfeatureAction = menu.addAction("Draw Feature")
+        showfeatureAction = menu.addAction("Draw Feature(s)")
         copysequenceAction = menu.addAction("Copy Sequence")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showfeatureAction:

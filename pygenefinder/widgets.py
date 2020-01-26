@@ -330,50 +330,151 @@ class SeqFeaturesViewer(QDialog):
 
         super(SeqFeaturesViewer, self).__init__(parent)
         self.setWindowTitle('sequence features')
-        self.setGeometry(QtCore.QRect(200, 200, 800, 200))
+        self.setGeometry(QtCore.QRect(200, 200, 1000, 300))
+        self.setMinimumHeight(150)
         self.add_widgets()
         return
 
     def add_widgets(self):
+        """Add widgets"""
 
         l = QVBoxLayout(self)
         self.setLayout(l)
         val=0
-        buttons = QWidget()
-        l.addWidget(buttons)
-        bl = QHBoxLayout(buttons)
-        slider = QSlider(Qt.Horizontal)
+        navpanel = QWidget()
+        navpanel.setMaximumHeight(60)
+        l.addWidget(navpanel)
+        bl = QHBoxLayout(navpanel)
+        slider = QSlider(QtCore.Qt.Horizontal)
+        slider.setTickPosition(slider.TicksBothSides)
+        slider.setTickInterval(1000)
+        slider.setPageStep(200)
+        slider.setValue(1)
+        #slider.sliderReleased.connect(self.value_changed)
+        slider.valueChanged.connect(self.value_changed)
+        self.slider = slider
         bl.addWidget(slider)
-        loclbl = QLabel('start')
-        bl.addWidget(loclbl)
-        w = self.start = QLineEdit()
-        w.setText(str(val))
-        #bl.addWidget(self.start)
+
+        zoomoutbtn = QPushButton('-')
+        zoomoutbtn.setMaximumWidth(50)
+        bl.addWidget(zoomoutbtn)
+        zoomoutbtn.clicked.connect(self.zoom_out)
+        zoominbtn = QPushButton('+')
+        zoominbtn.setMaximumWidth(50)
+        bl.addWidget(zoominbtn)
+        zoominbtn.clicked.connect(self.zoom_in)
+
+        self.recselect = QComboBox()
+        #recselect.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        bl.addWidget(self.recselect)
+        #self.rangedial = rd = QDial()
+        #rd.setGeometry(10,10,60,60)
+        #rd.setMinimum(10)
+        #rd.setMaximum(10000)
+        #zoom.setNotchesVisible(True)
+        #rd.setWrapping(False)
+        #rd.valueChanged.connect(self.value_changed)
+        #bl.addWidget(rd)
+
         from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
         import matplotlib.pyplot as plt
         fig,ax = plt.subplots(1,1,figsize=(15,2))
-        canvas = FigureCanvas(fig)
-        l.addWidget(canvas)
+        self.canvas = FigureCanvas(fig)
+        l.addWidget(self.canvas)
         self.ax = ax
+
+        bottom = QWidget()
+        bottom.setMaximumHeight(50)
+        l.addWidget(bottom)
+        bl2 = QHBoxLayout(bottom)
+        self.loclbl = QLabel('')
+        bl2.addWidget(self.loclbl)
+        savebtn = QPushButton('Save Image')
+        savebtn.clicked.connect(self.save_image)
+        bl2.addWidget(savebtn)
         return
 
     def load_records(self, recs):
+        """Load list of SeqRecord objects"""
 
+        from Bio import SeqIO
+        self.records = SeqIO.to_dict(recs)
+        recnames = list(self.records.keys())
+        self.rec = self.records[recnames[0]]
+        length = len(self.rec.seq)
+        self.recselect.addItems(recnames)
+        sl = self.slider
+        sl.setMinimum(1)
+        sl.setMaximum(length)
+        sl.setTickInterval(length/20)
+        return
+
+    def value_changed(self):
+        """Callback for widgets"""
+
+        r = self.view_range
+        start = int(self.slider.value())
+        #zoom = int(self.rangedial.value())
+        end = int(start+r)
+        self.update(start, end)
+        return
+
+    def zoom_in(self):
+        fac = 1.2
+        r = int(self.view_range/fac)
+        start = int(self.slider.value())
+        end = start + r
+        self.update(start, end)
+        return
+
+    def zoom_out(self):
+        fac = 1.2
+        r = int(self.view_range*fac)
+        start = int(self.slider.value())
+        end = start + r
+        self.update(start, end)
         return
 
     def update(self, start, end):
         """Plot the features"""
 
+        import matplotlib
+        import pylab as plt
         from dna_features_viewer import GraphicFeature, GraphicRecord
         from dna_features_viewer import BiopythonTranslator
-        #fig=self.fig
+        #plt.rcParams.update({'font.size': 22})
         ax=self.ax
+        ax.clear()
         if start<0:
             start=0
-        rec = self.records[0]
+        if end == 0:
+            end = start+1000
+        if end-start > 100000:
+            end = start+100000
+        #print (start, end)
+        rec = self.rec
         graphic_record = BiopythonTranslator().translate_record(rec)
+        #graphic_record.default_font_size = 8
+        graphic_record.default_feature_color = "gray"
         cropped_record = graphic_record.crop((start, end))
-        ax, _ = cropped_record.plot( strand_in_label_threshold=7, ax=ax)
+        cropped_record.plot( strand_in_label_threshold=7, ax=ax)
+        if end-start < 150:
+            cropped_record.plot_sequence(ax=ax, location=(start,end))
+            cropped_record.plot_translation(ax=ax, location=(start,end),fontdict={'weight': 'bold'})
+        plt.tight_layout()
+        self.canvas.draw()
+        self.view_range = end-start
+        self.loclbl.setText(str(start)+'-'+str(end))
+        return
+
+    def save_image(self):
+
+        filters = "png files (*.png);;svg files (*.svg);;jpg files (*.jpg);;All files (*.*)"
+        filename, _ = QFileDialog.getSaveFileName(self,"Save Figure",
+                                                  "",filters)
+        if not filename:
+            return
+        self.ax.figure.savefig(filename, bbox_inches='tight')
         return
 
 class AlignmentViewer(QDialog):
