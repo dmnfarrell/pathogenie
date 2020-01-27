@@ -29,9 +29,9 @@ from PySide2 import QtCore
 from PySide2.QtWidgets import *
 from PySide2.QtGui import *
 
-#import matplotlib
 import pandas as pd
 import numpy as np
+from Bio import SeqIO
 from . import tools, app, widgets, tables
 
 home = os.path.expanduser("~")
@@ -490,6 +490,17 @@ class pygenefinderApp(QMainWindow):
                                         filter="Genbank Files(*.gb *.gbk);;All Files(*.*)")
         if not filename:
             return
+
+        df = self.fasta_table.model.df
+        row = self.fasta_table.getSelectedRows()[0]
+        data = df.iloc[row]
+        name = data.label
+        index = df.index[row]
+        #print (df)
+        df.at[index,'genbank'] = filename
+        self.fasta_table.refresh()
+        recs = list(SeqIO.parse(filename,'gb'))
+        self.annotations[name] = recs
         return
 
     def annotate_files(self, progress_callback):
@@ -886,7 +897,6 @@ class AppOptions(widgets.BaseOptions):
                     'hmmer':{'type':'checkbox','default':True},
                     }
         return
-
 
 def main():
     "Run the application"

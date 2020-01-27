@@ -333,6 +333,14 @@ class SeqFeaturesViewer(QDialog):
         self.setGeometry(QtCore.QRect(200, 200, 1000, 300))
         self.setMinimumHeight(150)
         self.add_widgets()
+        self.color_map = {
+            "rep_origin": "yellow",
+            "CDS": "lightblue",
+            "regulatory": "red",
+            "misc_recomb": "darkblue",
+            "misc_feature": "lightgreen",
+            "tRNA": "orange"
+        }
         return
 
     def add_widgets(self):
@@ -366,15 +374,8 @@ class SeqFeaturesViewer(QDialog):
 
         self.recselect = QComboBox()
         #recselect.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.recselect.currentIndexChanged.connect(self.update_record)
         bl.addWidget(self.recselect)
-        #self.rangedial = rd = QDial()
-        #rd.setGeometry(10,10,60,60)
-        #rd.setMinimum(10)
-        #rd.setMaximum(10000)
-        #zoom.setNotchesVisible(True)
-        #rd.setWrapping(False)
-        #rd.valueChanged.connect(self.value_changed)
-        #bl.addWidget(rd)
 
         from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
         import matplotlib.pyplot as plt
@@ -403,46 +404,76 @@ class SeqFeaturesViewer(QDialog):
         self.rec = self.records[recnames[0]]
         length = len(self.rec.seq)
         self.recselect.addItems(recnames)
+        self.recselect.setStyleSheet("QComboBox { combobox-popup: 0; }");
+        self.recselect.setMaxVisibleItems(10)
         sl = self.slider
         sl.setMinimum(1)
         sl.setMaximum(length)
         sl.setTickInterval(length/20)
         return
 
+
+    def update_record(self, recname=None):
+        """Update record"""
+
+        recname = self.recselect.currentText()
+        self.rec = self.records[recname]
+        length = len(self.rec.seq)
+        sl = self.slider
+        sl.setMinimum(1)
+        sl.setMaximum(length)
+        sl.setTickInterval(length/20)
+        self.update()
+        return
+
     def value_changed(self):
         """Callback for widgets"""
 
+        length = len(self.rec.seq)
         r = self.view_range
         start = int(self.slider.value())
-        #zoom = int(self.rangedial.value())
         end = int(start+r)
+        if end > length:
+            end=length
+        print (start, end)
         self.update(start, end)
         return
 
     def zoom_in(self):
+        """Zoom in"""
+
+        length = len(self.rec.seq)
         fac = 1.2
         r = int(self.view_range/fac)
         start = int(self.slider.value())
         end = start + r
+        if end > length:
+            end=length
         self.update(start, end)
         return
 
     def zoom_out(self):
+        """Zoom out"""
+
+        length = len(self.rec.seq)
         fac = 1.2
         r = int(self.view_range*fac)
         start = int(self.slider.value())
         end = start + r
+        if end > length:
+            end=length
+            start = start-r
         self.update(start, end)
         return
 
-    def update(self, start, end):
+    def update(self, start=1, end=2000):
         """Plot the features"""
 
         import matplotlib
         import pylab as plt
         from dna_features_viewer import GraphicFeature, GraphicRecord
         from dna_features_viewer import BiopythonTranslator
-        #plt.rcParams.update({'font.size': 22})
+
         ax=self.ax
         ax.clear()
         if start<0:
@@ -453,10 +484,14 @@ class SeqFeaturesViewer(QDialog):
             end = start+100000
         #print (start, end)
         rec = self.rec
-        graphic_record = BiopythonTranslator().translate_record(rec)
-        #graphic_record.default_font_size = 8
-        graphic_record.default_feature_color = "gray"
+        translator = BiopythonTranslator(
+            features_filters=(lambda f: f.type not in ["gene", "source"],),
+            features_properties=lambda f: {"color": self.color_map.get(f.type, "white")},
+        )
+        graphic_record = translator.translate_record(rec)
         cropped_record = graphic_record.crop((start, end))
+        #print (start, end)
+        #print (len(cropped_record.features))
         cropped_record.plot( strand_in_label_threshold=7, ax=ax)
         if end-start < 150:
             cropped_record.plot_sequence(ax=ax, location=(start,end))
