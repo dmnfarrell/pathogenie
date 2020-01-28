@@ -301,10 +301,10 @@ def hmmer(infile, threads=4, hmm_file=None):
                                 c=hmmscancmd,t=threads,db=db,i=infile,o=outfile)
     print (cmd)
     tmp = subprocess.check_output(cmd, shell=True)
-    h = tools.read_hmmer3('hmm.txt')
+    h = tools.read_hmmer3(outfile)
     #print (df)
     df = h.merge(df,on='name',how='left')
-    #print (df)
+    #print (df[:5])
     #get coords from prodigal fasta heading if available
     df[['start','end','strand']] = df.description.apply(get_prodigal_coords,1)
     df['contig'] = df['name'].apply(get_contig)
@@ -441,7 +441,7 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
         contig = get_contig(c)
         #truncated label for writing to genbank
         label = ('_').join(c.split('_')[:2])
-        print (c, len(df), label)
+        #print (c, len(df), label)
         nucseq = contigs[c].seq
         rec = SeqRecord(nucseq)
         rec.seq.alphabet = generic_dna
@@ -496,8 +496,10 @@ def main():
                         help="input fasta file", metavar="FILE")
     parser.add_argument("-p", "--path", dest="path",
                         help="input fasta file", metavar="FILE")
-    parser.add_argument("-o", "--out", dest="outdir", default='amr_results',
+    parser.add_argument("-o", "--out", dest="outdir", default='results_pygf',
                         help="output folder", metavar="FILE")
+    parser.add_argument("-k", "--kingdom", dest="kingdom", default='bacteria',
+                        help="kingdom for annotation")
     parser.add_argument("-d", "--db", dest="db", default='card',
                         help="input fasta file")
     parser.add_argument("-i", "--ident", dest="identity", default='card',

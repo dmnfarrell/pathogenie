@@ -320,8 +320,8 @@ class FileViewer(QDialog):
             for l in f.readlines():
                 self.ed.appendPlainText(l)
         recnames = list(recs.keys())
-        self.recselect.addItems(recnames)
-        self.recselect.setCurrentIndex(0)
+        #self.recselect.addItems(recnames)
+        #self.recselect.setCurrentIndex(0)
         return
 
 class SeqFeaturesViewer(QDialog):
@@ -476,21 +476,24 @@ class SeqFeaturesViewer(QDialog):
 
         ax=self.ax
         ax.clear()
+        rec = self.rec
+        length = len(self.rec.seq)
         if start<0:
-            start=0
+            start=1
         if end == 0:
             end = start+1000
         if end-start > 100000:
             end = start+100000
-        #print (start, end)
+        if end > length:
+            end = length
         rec = self.rec
         translator = BiopythonTranslator(
             features_filters=(lambda f: f.type not in ["gene", "source"],),
             features_properties=lambda f: {"color": self.color_map.get(f.type, "white")},
         )
+        #print (start, end, length)
         graphic_record = translator.translate_record(rec)
         cropped_record = graphic_record.crop((start, end))
-        #print (start, end)
         #print (len(cropped_record.features))
         cropped_record.plot( strand_in_label_threshold=7, ax=ax)
         if end-start < 150:
