@@ -416,7 +416,7 @@ class SeqFeaturesViewer(QDialog):
         """Set the selected record which also updates the plot"""
 
         index = self.recselect.findText(recname)
-        self.recselect.setCurrentIndex(index)        
+        self.recselect.setCurrentIndex(index)
         return
 
     def update_record(self, recname=None):
@@ -442,7 +442,7 @@ class SeqFeaturesViewer(QDialog):
         start = int(self.slider.value())
         end = int(start+r)
         if end > length:
-            end=length
+            return
         #print (start, end)
         self.redraw(start, end)
         return
@@ -488,7 +488,7 @@ class SeqFeaturesViewer(QDialog):
         length = len(self.rec.seq)
         if start<0:
             start=1
-        if end == 0:
+        if end <= 0:
             end = start+2000
         if end-start > 100000:
             end = start+100000
