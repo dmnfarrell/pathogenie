@@ -23,12 +23,11 @@ block_cipher = None
 
 
 a = Analysis(['main.py'],
-             pathex=['/home/farrell/gitprojects/pygenefinder'],
              binaries=[('win_binaries/*', 'bin')],
-             hiddenimports=[],
+             hiddenimports=['Bio.SearchIO.HmmerIO'],
              hookspath=[],
              runtime_hooks=[],
-             excludes=['PIL','bokeh','tkinter','lib2to3'],
+             excludes=['PIL','tkinter','lib2to3','pywin.debugger', 'pywin.debugger.dbgcon'],
              win_no_prefer_redirects=False,
              win_private_assemblies=False,
              cipher=block_cipher,
@@ -37,6 +36,25 @@ a = Analysis(['main.py'],
                      ('pygenefinder/data/*', 'pygenefinder/data/')  ])
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
+
+#remove some files we don't need
+exclude = ['Qt53D','Qt5Quick','Qt5Web','Qt5Multimedia',
+ 		       'sqlite3','d3dcompiler']
+
+def remove_from_list(input, keys):
+   outlist = []
+   for item in input:
+       name, _, _ = item
+       flag = 0
+       for key_word in keys:
+           if name.find(key_word) > -1:
+               flag = 1
+       if flag != 1:
+           outlist.append(item)
+   return outlist
+
+a.binaries = remove_from_list(a.binaries, exclude)
+
 exe = EXE(pyz,
           a.scripts,
           [],

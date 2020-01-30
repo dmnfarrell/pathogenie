@@ -97,6 +97,7 @@ class pygenefinderApp(QMainWindow):
         #mainlayout.addWidget(right)
         self.right_tabs = QTabWidget(right)
         self.right_tabs.setTabsClosable(True)
+        self.right_tabs.tabCloseRequested.connect(self.close_right_tab)
         l2.addWidget(self.right_tabs)
         self.info = QTextEdit(right, readOnly=True)
         #self.info.setStyleSheet("font-family: monospace; font-size: 12px;")
@@ -130,6 +131,16 @@ class pygenefinderApp(QMainWindow):
         name = self.tabs.tabText(index)
         self.tabs.removeTab(index)
         del self.sheets[name]
+        return
+
+    @QtCore.Slot(int)
+    def close_right_tab(self, index):
+        """Close right tab"""
+
+        name = self.right_tabs.tabText(index)
+        if name == 'log':
+            return
+        self.right_tabs.removeTab(index)
         return
 
     def options_frame(self):
@@ -243,8 +254,7 @@ class pygenefinderApp(QMainWindow):
         self.proj_file = None
         self.fasta_table.setDataFrame(pd.DataFrame({'name':[]}))
         self.tabs.clear()
-        #for i in range(self.tabs.count()):
-        #    self.tabs.removeTab(i)
+        self.annotations = {}
         self.projectlabel.setText('')
         self.outdirLabel.setText(self.outputdir)
         return
@@ -398,6 +408,7 @@ class pygenefinderApp(QMainWindow):
         return
 
     def plot_feature_summary(self):
+        """Summary of features"""
 
         df = self.fasta_table.model.df
         row = self.fasta_table.getSelectedRows()[0]
@@ -412,8 +423,9 @@ class pygenefinderApp(QMainWindow):
         featsdf = tools.records_to_dataframe(recs)
         #featsdf.length.hist(ax=ax)
         featsdf['category'] = featsdf['product'].apply(tools.apply_cat)
+        featsdf = featsdf[featsdf.category!='other']
         cats = featsdf.category.value_counts()
-        cats.plot.pie(ax=axs[0])
+        cats.plot.bar(ax=axs[0])
         i = self.right_tabs.addTab(w, name)
         self.right_tabs.setCurrentIndex(i)
         return w
@@ -436,6 +448,7 @@ class pygenefinderApp(QMainWindow):
         if name in self.sheets:
             return
         featsdf = tools.records_to_dataframe(recs)
+        featsdf['category'] = featsdf['product'].apply(tools.apply_cat)
         self.add_table(name, featsdf, kind='features')
         return
 

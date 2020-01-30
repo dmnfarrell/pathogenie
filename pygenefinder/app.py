@@ -59,7 +59,9 @@ links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequenc
         'IS':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/IS',
         'bacteria.16SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.16SrRNA.fna',
         'bacteria.23SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.23SrRNA.fna',
-        'HAMAP.hmm':'https://github.com/tseemann/prokka/raw/master/db/hmm/HAMAP.hmm'  }
+        'HAMAP.hmm':'https://github.com/tseemann/prokka/raw/master/db/hmm/HAMAP.hmm',
+        'TIGRFAMS':'ftp://ftp.jcvi.org/pub/data/TIGRFAMs/TIGRFAMs_15.0_HMM.tar.gz',
+        'PFAM-A':'ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz' }
 
 hmm = 'https://github.com/tseemann/prokka/raw/master/db/hmm/HAMAP.hmm'
 

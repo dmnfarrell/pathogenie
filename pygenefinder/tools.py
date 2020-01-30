@@ -185,7 +185,7 @@ def records_to_dataframe(recs):
     for rec in recs:
         df = features_to_dataframe(rec.features, id=rec.id)
         res.append(df)
-    res=pd.concat(res)
+    res=pd.concat(res, sort=False)
     return res
 
 def fasta_to_dataframe(infile, header_sep=None, key='name', seqkey='sequence'):
@@ -530,13 +530,14 @@ def get_presence_absence(df, cols=None):
 def apply_cat(x):
     keys=['ARO','efflux','adhesin','LEE','porin','stress',
           'secretion system', 'bacteriophage',
-          'membrane','prophage','secreted','IS','insertion','transposase','integrase',
-          'virulence','protease','stress','toxic','phage','kinase','phosphatase',
-          'hypothetical','membrane','binding','rna','ribosomal','tRNA','methyltransferase',
-         'polymerase','DNA','Transcription','lipoprotein','protease']
+          'membrane','transmembrane','prophage','secreted','IS','insertion','transposase','integrase',
+          'virulence','protease','stress','toxic','phage','kinase','phosphatase','transferase',
+          'hypothetical','membrane','binding','ribosomal rna','ribosomal','trna','methyltransferase',
+          'polymerase','transcription','lipoprotein','protease','hydrolase','zinc',
+          'cell division','cell cycle','cytoplasm','endosome','dna-binding']
     for i in keys:
         if x is np.nan: return
-        if i in x:
+        if i in x.lower():
             return i
     return 'other'
 
@@ -556,32 +557,6 @@ def genes_clustermap(x,xticklabels=0,title=''):
     cg.fig.suptitle(title)
     cg.fig.subplots_adjust(right=0.8)
     return
-
-def get_prot_seq(name,gene):
-    #get prot seqs from annot fasta files
-    f='annot_scaff/{n}/{n}.faa'.format(n=name)
-    #print f
-    seqs = SeqIO.to_dict(SeqIO.parse(f,'fasta'))
-    return seqs[gene]
-
-def get_roary_protein(gene, path='roary', samples=None):
-    #get protein seqs for a gene in all samples
-    x = pd.read_csv(os.path.join(path, 'gene_presence_absence.csv'))
-    if samples is None:
-        samples = x.columns[14:]
-    #print x[x.Gene==gene]
-    r = x[x.Gene==gene].iloc[0].dropna()
-    lbls = r.loc[samples].to_dict()
-    lbls = dict((lbls[k], k) for k in lbls)
-    seqs=[]
-    for a in samples:
-        try:
-            s = get_prot_seq(a,r[a])
-            #print s
-        except:
-            continue
-        seqs.append(s)
-    return seqs, lbls
 
 def draw_features(rec):
     from dna_features_viewer import BiopythonTranslator

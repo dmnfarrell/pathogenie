@@ -375,7 +375,7 @@ class FilesTable(DataFrameTable):
         showFeaturesAction = menu.addAction("Show Feature Table")
         showGenbankAction = menu.addAction("Show Genbank File")
         showGFFAction = menu.addAction("Show GFF File")
-        plotSummaryAction = menu.addAction("Plot Feature Summary")
+        #plotSummaryAction = menu.addAction("Plot Summary")
         removeAction = menu.addAction("Remove Selected")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         # Map the logical row index to a real index for the source model
@@ -395,8 +395,8 @@ class FilesTable(DataFrameTable):
             self.app.show_genbank_file()
         elif action == showGFFAction:
             self.app.show_gff_file()
-        elif action == plotSummaryAction:
-            self.app.plot_feature_summary()
+        #elif action == plotSummaryAction:
+        #    self.app.plot_feature_summary()
         elif action == removeAction:
             self.deleteRows(row)
         return
@@ -438,10 +438,8 @@ class ResultsTable(DataFrameTable):
             self.app.show_fasta_sequences(row)
         elif action == showAlignmentAction:
             self.app.show_gene_alignment(row)
-        elif action == showTreeAction:
-            self.app.show_phylo_tree(row)
-        #elif action == showProteinSeqAction:
-        #    self.app.show_protein_sequences(row)
+        #elif action == showTreeAction:
+        #    self.app.show_phylo_tree(row)
         return
 
 class FeaturesTable(DataFrameTable):
@@ -463,4 +461,11 @@ class FeaturesTable(DataFrameTable):
         if action == showfeatureAction:
             self.app.plot_feature(row)
         elif action == copysequenceAction:
-            self.app.copy_sequence(row)
+            self.copy_sequence(row)
+
+    def copy_sequence(self, row):
+
+        clip = QApplication.clipboard()
+        data = self.model.df.iloc[row]
+        clip.setText(data.translation)
+        return
