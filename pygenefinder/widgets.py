@@ -412,18 +412,26 @@ class SeqFeaturesViewer(QDialog):
         sl.setTickInterval(length/20)
         return
 
+    def set_record(self, recname):
+        """Set the selected record which also updates the plot"""
+
+        index = self.recselect.findText(recname)
+        self.recselect.setCurrentIndex(index)        
+        return
 
     def update_record(self, recname=None):
-        """Update record"""
+        """Update after record selection changed"""
 
+        #if recname == None:
         recname = self.recselect.currentText()
+        #print ('name',recname)
         self.rec = self.records[recname]
         length = len(self.rec.seq)
         sl = self.slider
         sl.setMinimum(1)
         sl.setMaximum(length)
         sl.setTickInterval(length/20)
-        self.update()
+        self.redraw()
         return
 
     def value_changed(self):
@@ -435,8 +443,8 @@ class SeqFeaturesViewer(QDialog):
         end = int(start+r)
         if end > length:
             end=length
-        print (start, end)
-        self.update(start, end)
+        #print (start, end)
+        self.redraw(start, end)
         return
 
     def zoom_in(self):
@@ -449,7 +457,7 @@ class SeqFeaturesViewer(QDialog):
         end = start + r
         if end > length:
             end=length
-        self.update(start, end)
+        self.redraw(start, end)
         return
 
     def zoom_out(self):
@@ -463,10 +471,10 @@ class SeqFeaturesViewer(QDialog):
         if end > length:
             end=length
             start = start-r
-        self.update(start, end)
+        self.redraw(start, end)
         return
 
-    def update(self, start=1, end=2000):
+    def redraw(self, start=1, end=2000):
         """Plot the features"""
 
         import matplotlib
@@ -481,7 +489,7 @@ class SeqFeaturesViewer(QDialog):
         if start<0:
             start=1
         if end == 0:
-            end = start+1000
+            end = start+2000
         if end-start > 100000:
             end = start+100000
         if end > length:

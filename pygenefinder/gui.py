@@ -480,19 +480,18 @@ class pygenefinderApp(QMainWindow):
         return
 
     def plot_feature(self, row):
-        """Show feature details"""
+        """Show feature details in viewer"""
 
         index = self.tabs.currentIndex()
         name = self.tabs.tabText(index)
         table = self.tabs.widget(index)
-        #df = self.sheets[name]['data']
         df = table.model.df
         data = df.iloc[row]
         recs = self.annotations[name]
 
         s = widgets.SeqFeaturesViewer(self)
         s.load_records(recs)
-        s.update(data.start-2000, data.end+2000)
+        s.set_record(recname=data['id'])        
         s.show()
         return
 
