@@ -99,6 +99,7 @@ def dialogFromOptions(parent, opts, sections=None,
             if t == 'combobox':
                 w = QComboBox()
                 w.addItems(opt['items'])
+                #w.view().setMinListWidth(100)
                 try:
                     w.setCurrentIndex(opt['items'].index(str(opt['default'])))
                 except:
@@ -245,11 +246,12 @@ class ToolBar(QWidget):
 
 class BaseOptions(object):
     """Class to generate widget dialog for dict of options"""
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, opts={}, groups={}):
         """Setup variables"""
 
         self.parent = parent
-        #df = self.parent.table.model.df
+        self.groups = groups
+        self.opts = opts
         return
 
     def applyOptions(self):
@@ -273,6 +275,8 @@ class BaseOptions(object):
         return dialog
 
     def setWidgetValue(self, key, value):
+        "Set a widget value"
+
         setWidgetValues(self.widgets, {key: value})
         self.applyOptions()
         return
@@ -283,6 +287,31 @@ class BaseOptions(object):
         new = self.kwds[key]+inc
         self.setWidgetValue(key, new)
         return
+
+class DynamicDialog(QDialog):
+    """Dynamic form using baseoptions"""
+
+    def __init__(self, parent=None, options={}, groups=None, title='Dialog'):
+        super(DynamicDialog, self).__init__(parent)
+        self.setWindowTitle(title)
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+        self.opts = BaseOptions(self, options, groups)
+        dialog = self.opts.showDialog(self, wrap=1, section_wrap=1)
+        layout.addWidget(dialog)
+        buttonbox = QDialogButtonBox(self)
+        buttonbox.addButton("Cancel", QDialogButtonBox.RejectRole)
+        buttonbox.addButton("Ok", QDialogButtonBox.AcceptRole)
+        self.connect(buttonbox, QtCore.SIGNAL("accepted()"), self, QtCore.SLOT("accept()"))
+        self.connect(buttonbox, QtCore.SIGNAL("rejected()"), self, QtCore.SLOT("reject()"))
+        layout.addWidget(buttonbox)
+        return
+
+    def get_values():
+        """Get the widget values"""
+
+        kwds = self.opts.kwds
+        return kwds
 
 class FileViewer(QDialog):
     """Sequence records features viewer"""

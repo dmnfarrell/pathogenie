@@ -49,7 +49,9 @@ class pygenefinderApp(QMainWindow):
         self.setWindowIcon(QIcon(logoimg))
         self.create_menu()
         self.main = QSplitter(self)
-        screen_resolution = QDesktopWidget().screenGeometry()
+        #screen_resolution = QDesktopWidget().screenGeometry()
+        screen = QGuiApplication.screens()[0]
+        screen_resolution  = screen.geometry()
         if screen_resolution.height() > 1080:
             fac=.8
         else:
@@ -247,7 +249,7 @@ class pygenefinderApp(QMainWindow):
             reply = QMessageBox.question(self, 'Confirm', "This will clear the current project.\nAre you sure?",
                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.No:
-            return
+            return False
         self.annotations = {}
         self.outputdir = None
         self.sheets = {}
@@ -297,7 +299,9 @@ class pygenefinderApp(QMainWindow):
     def load_test(self):
         """Load test_files"""
 
-        self.clear_project(ask=True)
+        reply = self.clear_project(ask=True)
+        if reply == False:
+            return
         filenames = glob.glob(os.path.join(app.datadir, '*.fa'))
         self.load_fasta_table(filenames)
         return
@@ -325,9 +329,6 @@ class pygenefinderApp(QMainWindow):
                                                     filter="Fasta Files(*.fa *.fna *.fasta);;All Files(*.*)")
         if not filenames:
             return
-        #reply = QMessageBox.question(self, 'Add Files', "Append or overwrite?",
-        #                            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-        #if reply == QMessageBox.Yes:
         self.load_fasta_table(filenames)
         return
 
@@ -526,7 +527,6 @@ class pygenefinderApp(QMainWindow):
         kwds = self.opts.kwds
         overwrite = kwds['overwrite']
         kingdom = kwds['kingdom']
-        #self.inputs = self.fasta_table.getDataFrame()
         inputs = self.fasta_table.model.df
         rows = self.fasta_table.getSelectedRows()
         df = inputs.loc[rows]
@@ -762,27 +762,25 @@ class pygenefinderApp(QMainWindow):
         if not filename:
             return
         shutil.copy(filename, os.path.join(path, os.path.basename(filename)))
-        self.get_custom_dbs()
+        app.get_files_in_path(app.customdbdir)
         return
 
     def add_trusted_proteins(self):
         """"""
 
         path = app.customdbdir
-        if not os.path.exists(path):
+        '''if not os.path.exists(path):
             os.makedirs(path)
         filename, _ = QFileDialog.getOpenFileName(self, 'Open Protein Fasta', './',
                                     filter="Fasta Files(*.fa *.faa *.fasta);;All Files(*.*)")
         if not filename:
             return
-
+        app.add_protein_db(filename)'''
+        options = {'name':{'type':'entry','default':90}}
+        dlg = widgets.DynamicDialog(self, options=options, title='Add Protein File')
+        dlg.show()
+        self.opts.setWidgetValue('trusted',['x'])
         return
-
-    def get_custom_dbs(self):
-        """Find names of custom sequence blast databases"""
-
-        path = app.customdbdir
-        return glob.glob(path+'/*')
 
     def _check_snap(self):
         if os.environ.has_key('SNAP_USER_COMMON'):
@@ -894,10 +892,11 @@ class AppOptions(widgets.BaseOptions):
         self.kwds = {}
         dbs = app.db_names
         kingdom = ['bacteria','viruses','archaea']
+        trusted = app.get_files_in_path(app.trustedproteindir)
         cpus = [str(i) for i in range(1,os.cpu_count()+1)]
         self.groups = {'general':['threads','overwrite'],
                        'blast':['db','identity','coverage','multiple hits'],
-                       'annotation':['kingdom','hmmer']}
+                       'annotation':['kingdom','trusted','hmmer']}
         self.opts = {'threads':{'type':'combobox','default':4,'items':cpus},
                     'overwrite':{'type':'checkbox','default':True},
                     'db':{'type':'combobox','default':'card',
@@ -907,6 +906,8 @@ class AppOptions(widgets.BaseOptions):
                     'multiple hits':{'type':'checkbox','default':False},
                     'kingdom':{'type':'combobox','default':'bacteria',
                     'items':kingdom,'label':'kingdom'},
+                    'trusted':{'type':'combobox','default':'',
+                    'items':trusted,'label':'use trusted'},
                     'hmmer':{'type':'checkbox','default':True},
                     }
         return

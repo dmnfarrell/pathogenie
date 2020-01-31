@@ -371,11 +371,11 @@ class FilesTable(DataFrameTable):
 
         menu = self.menu
         fileinfoAction = menu.addAction("File Summary")
-        addAnnotationAction = menu.addAction("Add Annotation From File")
         showFeaturesAction = menu.addAction("Show Feature Table")
         showGenbankAction = menu.addAction("Show Genbank File")
         showGFFAction = menu.addAction("Show GFF File")
         #plotSummaryAction = menu.addAction("Plot Summary")
+        addAnnotationAction = menu.addAction("Add Annotation From File")
         removeAction = menu.addAction("Remove Selected")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         # Map the logical row index to a real index for the source model

@@ -22,7 +22,7 @@
 
 from __future__ import absolute_import, print_function
 import sys,os,subprocess,glob,re
-import urllib, hashlib
+import urllib, hashlib, shutil
 import tempfile
 import pandas as pd
 import numpy as np
@@ -42,6 +42,8 @@ dbdir = os.path.join(config_path, 'db')
 customdbdir = os.path.join(config_path, 'custom')
 hmmdir = os.path.join(config_path, 'hmms')
 prokkadbdir = os.path.join(config_path, 'prokka')
+trustedproteindir = os.path.join(config_path, 'proteins')
+
 db_names = ['card','resfinder','argannot','ncbi','plasmidfinder','ecoh','vfdb',
             'bacteria.16SrRNA','bacteria.23SrRNA']
 prokka_db_names = ['sprot_bacteria','sprot_viruses','IS','AMR']
@@ -332,6 +334,20 @@ def default_databases():
           'sprot_viruses':{'filename':'sprot_viruses.fa','evalue':1e-10},
             'IS':{'filename':'IS.fa','evalue':1e-30},
             'amr':{'filename':'amr.fa','evalue':1e-300}}
+    return
+
+def get_files_in_path(path):
+    """Find names of custom sequence files"""
+
+    return glob.glob(path+'/*')
+
+def add_protein_db(filename):
+    """Add preferred protein sequences to be used for annotation"""
+
+    path = trustedproteindir
+    os.makedirs(path, exist_ok=True)
+    newpath = os.path.join(path, os.path.basename(filename))
+    shutil.copy(filename, newpath)
     return
 
 def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria', **kwargs):
