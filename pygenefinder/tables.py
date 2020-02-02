@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    pyamrfinder pandastable sub-classes.
+    dataframe table widget and sub-classes.
     Created Nov 2019
     Copyright (C) Damien Farrell
 

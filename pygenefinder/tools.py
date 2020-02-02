@@ -45,27 +45,6 @@ def resource_path(relative_path):
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_path, relative_path)
 
-def fastq_to_dataframe(f, size=None):
-    """Convert fastq to dataframe.
-        size: limit to the first reads of total size
-        Returns: dataframe with reads
-    """
-
-    import HTSeq
-    ext = os.path.splitext(f)[1]
-    if ext=='.fastq' or ext=='.gz':
-        ffile = HTSeq.FastqReader(f, "solexa")
-    elif ext == '.fa':
-        ffile = HTSeq.FastaReader(f)
-    else:
-        return
-    if size != None:
-        sequences = [(s.name, s.seq, s.descr) for s in islice(fastfile, i, i+size)]
-    else:
-        sequences = [(s.name,s.seq) for s in ffile]
-    df = pd.DataFrame(sequences,columns=['id','seq'])
-    return df
-
 def read_length_dist(df):
 
     df['length'] = df.seq.str.len()

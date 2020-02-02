@@ -53,12 +53,13 @@ class pygenefinderApp(QMainWindow):
         screen = QGuiApplication.screens()[0]
         screen_resolution  = screen.geometry()
         if screen_resolution.height() > 1080:
-            fac=.8
+            fac=0.8
+            x=150; y=150
         else:
             fac=1
+            x=0; y=0
         width, height = screen_resolution.width()*fac, screen_resolution.height()*fac
-        self.setGeometry(QtCore.QRect(150, 150, width, height))
-
+        self.setGeometry(QtCore.QRect(x, y, width, height))
         self.main.setFocus()
         self.setCentralWidget(self.main)
         self.setup_gui()
@@ -250,7 +251,7 @@ class pygenefinderApp(QMainWindow):
                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
         if reply == QMessageBox.No:
             return False
-        self.annotations = {}
+
         self.outputdir = None
         self.sheets = {}
         self.proj_file = None
@@ -522,6 +523,9 @@ class pygenefinderApp(QMainWindow):
         progress_callback: signal for indicating progress in gui
         """
 
+        retval = self.check_output_folder()
+        if retval == 0:
+            return
         self.running = True
         self.opts.applyOptions()
         kwds = self.opts.kwds
@@ -743,11 +747,9 @@ class pygenefinderApp(QMainWindow):
         """check if we have an output dir"""
 
         if self.outputdir == None:
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Warning)
-            msg.setText("You should set an output folder from the Settings menu.")
-            msg.setWindowTitle('No output folder set.')
-            retval = msg.exec_()
+            #QMessageBox.warning(self, 'No output folder set',
+            #    'You should set an output folder from the Settings menu')
+            self.show_info('You should set an output folder from the Settings menu')
             return 0
         return 1
 
@@ -769,17 +771,20 @@ class pygenefinderApp(QMainWindow):
         """"""
 
         path = app.customdbdir
-        '''if not os.path.exists(path):
+        if not os.path.exists(path):
             os.makedirs(path)
         filename, _ = QFileDialog.getOpenFileName(self, 'Open Protein Fasta', './',
                                     filter="Fasta Files(*.fa *.faa *.fasta);;All Files(*.*)")
         if not filename:
             return
-        app.add_protein_db(filename)'''
-        options = {'name':{'type':'entry','default':90}}
-        dlg = widgets.DynamicDialog(self, options=options, title='Add Protein File')
-        dlg.show()
-        self.opts.setWidgetValue('trusted',['x'])
+        #app.add_protein_db(filename)
+        #options = {'name':{'type':'entry','default':90}}
+        #dlg = widgets.DynamicDialog(self, options=options, title='Add Protein File')
+        #dlg.show()
+        name = os.path.basename(filename)
+        #self.trusted = pd.DataFrame({'name':name,'path':filename})
+        #df = self.trusted
+        #self.opts.widgets['trusted'].addItems([name])
         return
 
     def _check_snap(self):

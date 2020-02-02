@@ -12,7 +12,7 @@ numpy
 pandas
 biopython
 matplotlib
-pandastable
+pyside2
 future
 
 Installation
