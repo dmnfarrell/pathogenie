@@ -341,19 +341,23 @@ class DataFrameModel(QtCore.QAbstractTableModel):
         self.dataChanged.emit()
 
 class DefaultTable(DataFrameTable):
-    """Basic QTableView """
+    """
+    QTableView with pandas DataFrame as model.
+    """
     def __init__(self, parent=None, app=None, dataframe=None, *args):
-
-        DataFrameTable.__init__(self)
+        DataFrameTable.__init__(self, parent, dataframe)
         self.app = app
         self.setWordWrap(False)
-        header = self.horizontalHeader()
-
-    def refresh(self):
-        DataFrameTable.refresh(self)
 
     def addActions(self, event, row):
+
         menu = self.menu
+        #showSequencesAction = menu.addAction("Show sequences")
+        #action = menu.exec_(self.mapToGlobal(event.pos()))
+        #if action == showSequencesAction:
+        #    self.app.show_fasta_sequences(row)
+
+        return
 
 class FilesTable(DataFrameTable):
     """

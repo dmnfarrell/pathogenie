@@ -178,7 +178,7 @@ def fasta_to_dataframe(infile, header_sep=None, key='name', seqkey='sequence'):
     #fix bad names
     if header_sep not in ['',None]:
         df[key] = df[key].apply(lambda x: x.split(header_sep)[0],1)
-    df[key] = df[key].str.replace('|','_')
+    #df[key] = df[key].str.replace('|','_')
     return df
 
 def get_fasta_info(filename):

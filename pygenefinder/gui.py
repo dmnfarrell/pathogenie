@@ -68,8 +68,7 @@ class pygenefinderApp(QMainWindow):
         if project != None:
             self.load_project(project)
         self.threadpool = QtCore.QThreadPool()
-        if project != None:
-            self.load_project(project)
+
         return
 
     def setup_gui(self):
@@ -400,7 +399,7 @@ class pygenefinderApp(QMainWindow):
         m[m.notnull()] = 1
         m = m.fillna(0)
         m = m.T.reset_index()
-        self.add_table('feature matrix', m, kind='results')
+        self.add_table('feature matrix', m, kind='default')
         self.feature_matrix = m
         return
 
@@ -534,7 +533,7 @@ class pygenefinderApp(QMainWindow):
         inputs = self.fasta_table.model.df
         rows = self.fasta_table.getSelectedRows()
         df = inputs.loc[rows]
-        files = inputs.filename
+        #files = inputs.filename
         msg = 'Running genome annotation..\nThis may take some time.'
         progress_callback.emit(msg)
         for i,row in df.iterrows():
@@ -795,9 +794,20 @@ class pygenefinderApp(QMainWindow):
 
     def quit(self):
         self.close()
+        return
 
-    def closeEvent(self, ce):
-        self.quit()
+    def closeEvent(self, event=None):
+
+        if self.proj_file != None and event != None:
+            reply = QMessageBox.question(self, 'Confirm', "Save the current project?",
+                                            QMessageBox.Cancel | QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.Cancel:
+                event.ignore()
+                return
+            elif reply == QMessageBox.Yes:
+                self.save_project()
+        #self.close()
+        event.accept()
 
     def _check_snap(self):
         if os.environ.has_key('SNAP_USER_COMMON'):
@@ -834,9 +844,9 @@ class pygenefinderApp(QMainWindow):
         text='pygenefinder GUI\n'\
                 +'version '+__version__+snap+'\n'\
                 +'Copyright (C) Damien Farrell 2019-\n'\
-                +'This program is free software; you can redistribute it and/or\n'\
-                +'modify it under the terms of the GNU General Public License\n'\
-                +'as published by the Free Software Foundation; either version 3\n'\
+                +'This program is free software; you can redistribute it and/or '\
+                +'modify it under the terms of the GNU General Public License '\
+                +'as published by the Free Software Foundation; either version 3 '\
                 +'of the License, or (at your option) any later version.\n'\
                 +'Using Python v%s, PySide2 v%s\n' %(pythonver, qtver)\
                 +'pandas v%s, matplotlib v%s' %(pandasver,mplver)

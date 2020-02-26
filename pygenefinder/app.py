@@ -379,7 +379,7 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
     df[['start','end','strand']] = df.description.apply(get_prodigal_coords,1)
     df['feat_type'] = 'CDS'
     df['contig'] = df['name'].apply(get_contig)
-
+    
     #get target seqs
     seqs = list(SeqIO.parse(resfile,'fasta'))
     #read input file nucleotide seqs
@@ -454,6 +454,7 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
     #we then write all found sequences to seqrecord/features
     l=1  #counter for assigning locus tags
     recs = []
+    #print (res.iloc[])
     #group by contig and get features for each protein found
     for c,df in res.groupby('contig'):
         contig = get_contig(c)

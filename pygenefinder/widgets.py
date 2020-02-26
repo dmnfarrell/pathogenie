@@ -552,7 +552,7 @@ class SeqFeaturesViewer(QDialog):
         self.ax.figure.savefig(filename, bbox_inches='tight')
         return
 
-class AlignmentViewer(QDialog):
+'''class AlignmentViewer(QDialog):
     """Alignment viewer"""
     def __init__(self, parent=None):
         super(AlignmentViewer, self).__init__(parent)
@@ -578,7 +578,7 @@ class AlignmentViewer(QDialog):
         path = os.path.abspath('seqs.html')
         webview.load( QtCore.QUrl.fromLocalFile(path) )
         self.tabs.addTab(webview,name)
-        return
+        return'''
 
 class PlotViewer(QDialog):
     def __init__(self, parent=None):
