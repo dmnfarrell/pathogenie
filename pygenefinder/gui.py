@@ -494,6 +494,7 @@ class pygenefinderApp(QMainWindow):
         s.load_records(recs)
         s.set_record(recname=data['id'])
         s.redraw(start = data.start-2000, end=data.end+2000)
+        s.slider.setValue(data.start + ((data.end-data.start)/2))
         s.show()
         return
 
