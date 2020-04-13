@@ -493,7 +493,8 @@ class pygenefinderApp(QMainWindow):
         s = widgets.SeqFeaturesViewer(self)
         s.load_records(recs)
         s.set_record(recname=data['id'])
-        s.redraw(start = data.start-2000, end=data.end+2000)
+        s.slider.setValue(data.start-2000)
+        #s.redraw(start = data.start-2000, end=data.end+2000)
         s.show()
         return
 

@@ -34,11 +34,11 @@ There is a self-contained graphical application for windows users (see below).
 
 ## Installation
 
-All operating systems with Python (>=3.6 recommended) installed:
+All operating systems with Python (>=3.6 required) installed:
 
-```pip install pygenefinder```
+```pip install -e git+https://github.com/dmnfarrell/pygenefinder.git#egg=pygenefinder```
 
-### Dependencies
+## Dependencies
 
 You require ncbi-blast+ tools and clustalw for basic gene finding. The following programs are used for genome annotation:
 
@@ -46,13 +46,17 @@ You require ncbi-blast+ tools and clustalw for basic gene finding. The following
 * hmmer3
 * aragorn
 
-These can all be installed on Debian/Ubuntu based systems using:
+Windows: these will be downloaded for you when you launch the program.
+
+Linux: these can all be installed on Debian/Ubuntu based systems using:
 
 ```apt install ncbi-blast+ clustal prodigal aragorn hmmer```
 
+OSX: **Not tested** but may work if you can install the dependencies. You can probably install them with bioconda.
+
 ### Windows GUI
 
-Most windows users will probably want to use the bundled graphical application. [Download here](https://github.com/dmnfarrell/pygenefinder/releases/download/0.1.0/pygenefinder-0.1.0-win64.zip). Just unzip to a folder and launch the program **pygenefinder.exe**.
+Most windows users will probably want to use the bundled graphical application. [Download current version here](https://github.com/dmnfarrell/pygenefinder/releases/download/0.1.0/pygenefinder-0.1.0-win64.zip). Just unzip to a folder and launch the program **pygenefinder.exe**.
 
 This has all the dependencies bundled with the program.
 
