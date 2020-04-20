@@ -379,9 +379,11 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
     df[['start','end','strand']] = df.description.apply(get_prodigal_coords,1)
     df['feat_type'] = 'CDS'
     df['contig'] = df['name'].apply(get_contig)
-    
+    df['sequence'] = df.sequence.str.rstrip('*')
     #get target seqs
     seqs = list(SeqIO.parse(resfile,'fasta'))
+    #remove trailing asterisks
+    #seqs = [s.rstrip("*") for s in seqs]
     #read input file nucleotide seqs
     contigs = SeqIO.to_dict(SeqIO.parse(infile,'fasta'))
     #print (df[:5])
@@ -444,6 +446,7 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
     #post process dataframe
     #res = res.fillna('')
     res['translation'] = res.sequence
+    res['length'] = res.sequence.str.len()
     #res['gene'] = res.gene.fillna('')
     res = res.reset_index(drop=True)
 
@@ -468,7 +471,7 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
         rec.name = label
         rec.COMMENT = 'annotated with pygenefinder'
         df = df.sort_values('start')
-        qcols = ['gene','product','locus_tag','translation']
+        qcols = ['gene','product','locus_tag','translation','length']
         for i,row in df.iterrows():
             row['locus_tag'] = '{p}_{l:05d}'.format(p=prefix,l=l)
             row = row.dropna()
@@ -481,6 +484,42 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
             l+=1
         recs.append(rec)
     return res,recs
+
+def annotate_files(recs, keys=None, outdir='annot', kingdom='bacteria'):
+    """Annotate a set of nucleotide seqrecords."""
+
+    res = []
+    for label in recs:
+        if keys!=None and label not in keys:
+            continue
+        rec = recs[label]
+        gbfile = os.path.join(outdir,label+'.gbk')
+        if os.path.exists(gbfile):
+            featdf = tools.genbank_to_dataframe(gbfile)
+            featdf['sequence'] = featdf.translation
+        else:
+            seq = recs[label]
+            filename = os.path.join('temp',label+'.fasta')
+            SeqIO.write(seq,filename,'fasta')
+            featdf,protrecs = run_annotation(filename, threads=10, kingdom=kingdom)
+            tools.recs_to_genbank(protrecs, gbfile)
+        featdf['label'] = label
+        res.append(featdf)
+    res = pd.concat(res)
+    return res
+
+def get_similar_sequences(protname, annot):
+    """Extract similar sequences by name from a set of annotations"""
+
+    seqs = []
+    for i,df in annot.groupby('label'):
+        s = df[df['product']==protname]
+        if len(s)==0:
+            continue
+        s = s.iloc[0]
+        seq = SeqRecord(Seq(s.sequence),id=s.label)#,description=s.host)
+        seqs.append(seq)
+    return seqs
 
 def run(filenames=[], db='card', outdir='amr_results', **kwargs):
     """Run pipeline"""

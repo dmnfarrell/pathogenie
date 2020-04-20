@@ -20,6 +20,7 @@
 
 from __future__ import print_function
 import sys,os,subprocess,glob,shutil,re
+from collections import OrderedDict, defaultdict
 import platform
 from Bio import Entrez
 Entrez.email = 'A.N.Other@example.com'
@@ -130,6 +131,7 @@ def features_to_dataframe(features, cds=False, id=''):
 
     featurekeys = []
     allfeat = []
+    allquals = []
     for (item, f) in enumerate(features):
         x = f.__dict__
         quals = f.qualifiers
@@ -147,11 +149,15 @@ def features_to_dataframe(features, cds=False, id=''):
                 else:
                     d[i] = x[i]
         allfeat.append(d)
-    quals = list(quals.keys())+['id','start','end','strand','feat_type']
+        for q in quals.keys():
+            if q not in allquals:
+                allquals.append(q)
+    quals = list(allquals)+['id','start','end','strand','feat_type']
     df = pd.DataFrame(allfeat,columns=quals)
     if 'translation' in df.keys():
         df['length'] = df.translation.astype('str').str.len()
-
+    if cds == True:
+        df = df[df.feat_type=='CDS']
     if len(df) == 0:
         print ('ERROR: genbank file return empty data, check that the file contains protein sequences '\
                'in the translation qualifier of each protein feature.' )
@@ -188,6 +194,27 @@ def get_fasta_info(filename):
     name = os.path.splitext(os.path.basename(filename))[0]
     d = {'label':name,'filename':filename, 'contigs':len(df)}
     return d
+
+def collapse_sequences(seqs, refrec):
+    """Get unique sequences from list of seqrecords"""
+
+    unique = {}
+    counts = {}
+    #unique[refrec.seq] = 'ref'
+    l = len(refrec.seq)
+    for seq in seqs:
+        if not seq.seq in counts:
+            counts[seq.seq] = 1
+        else:
+            counts[seq.seq] += 1
+        if len(seq.seq)<l-10 or len(seq.seq)>l+5 or 'X' in seq.seq:
+            continue
+        if not seq.seq in unique:
+            unique[seq.seq] = seq.id
+    new = []
+    for k in unique:
+        new.append(SeqRecord(k,id=unique[k]))
+    return new, counts
 
 def make_blast_database(filename, dbtype='nucl'):
     """Create a blast db from fasta file"""
@@ -293,7 +320,7 @@ def clustal_alignment(filename=None, seqs=None, command="clustalw"):
 
     from Bio.Align.Applications import ClustalwCommandline
     cline = ClustalwCommandline(command, infile=filename)
-    print (cline)
+    #print (cline)
     stdout, stderr = cline()
     align = AlignIO.read(name+'.aln', 'clustal')
     return align
@@ -485,16 +512,6 @@ def prokka_results(path,names):
     res['fam'] = res['product'].apply(lambda x: get_product(x))
     return res
 
-def plot_products(res):
-    #res=res.merge(info,left_on='isolate',right_on='id')
-    g = res.groupby('isolate').agg({'product':np.size})#.reset_index()
-    g.plot(kind='bar',figsize=(10,5),legend=False)
-    plt.title('Annotated Proteins',fontsize=20)
-    plt.ylabel('proteins')
-    plt.tight_layout()
-    plt.savefig('product_counts_ecoli.png')
-    return
-
 def get_presence_absence(df, cols=None):
     """parse roary file"""
     if cols is None:
@@ -536,13 +553,6 @@ def genes_clustermap(x,xticklabels=0,title=''):
     cg.fig.suptitle(title)
     cg.fig.subplots_adjust(right=0.8)
     return
-
-def draw_features(rec):
-    from dna_features_viewer import BiopythonTranslator
-    graphic_record = BiopythonTranslator().translate_record(rec)
-    ax, _ = graphic_record.plot(figure_width=20)
-    plt.title(rec.id)
-    plt.show()
 
 #phylo trees
 
@@ -626,16 +636,6 @@ def show_alignment(aln, diff=False, offset=0):
                 name = a.id[:20]
                 print (('%21s' %name), a.seq[start:end])
     return
-
-def abricate(filename, db='card',id=None):
-
-    cmd = '/local/abricate/bin/abricate %s -db %s --mincov 50 --minid 90 > temp.tab' %(filename,db)
-    print (cmd)
-    subprocess.check_output(cmd, shell=True, executable='/bin/bash')
-    df = pd.read_csv('temp.tab',sep='\t')
-    id = os.path.basename(filename)
-    df['id'] = id
-    return df
 
 def read_hmmer3(infile):
     """read hmmer3 tab file and return dataframe"""
