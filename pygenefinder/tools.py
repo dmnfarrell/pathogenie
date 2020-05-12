@@ -40,11 +40,40 @@ datadir = os.path.join(module_path, 'data')
 featurekeys = ['type','protein_id','locus_tag','gene','db_xref',
                'product', 'note', 'translation','pseudo','start','end','strand']
 
+config_path = os.path.join(home,'.config','pygenefinder')
+bin_path = os.path.join(config_path, 'binaries')
+
 def resource_path(relative_path):
     """ Get absolute path to resource, works for dev and for PyInstaller """
 
     base_path = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
     return os.path.join(base_path, relative_path)
+
+def get_cmd(cmd):
+    """Get windows version of a command if required"""
+
+    if getattr(sys, 'frozen', False):
+        cmd = tools.resource_path('bin/%s.exe' %cmd)
+    elif platform.system() == 'Windows':
+        cmd = os.path.join(bin_path, '%s.exe' %cmd)
+    return cmd
+
+def fetch_binaries():
+    """Get windows binaries -- windows only"""
+
+    url = "https://github.com/dmnfarrell/pygenefinder/raw/master/win_binaries/"
+    path = os.path.join(config_path, 'binaries')
+    os.makedirs(path, exist_ok=True)
+    names = ['aragorn.exe','blastn.exe','blastp.exe','makeblastdb.exe',
+            'hmmscan.exe','hmmpress.exe','prodigal.exe','msys-2.0.dll','clustalw2.exe']
+    for n in names:
+        filename = os.path.join(path,n)
+        if os.path.exists(filename):
+            continue
+        link = os.path.join(url,n)
+        print (filename,link)
+        urllib.request.urlretrieve(link, filename)
+    return
 
 def read_length_dist(df):
 
@@ -219,12 +248,7 @@ def collapse_sequences(seqs, refrec):
 def make_blast_database(filename, dbtype='nucl'):
     """Create a blast db from fasta file"""
 
-    cmd = 'makeblastdb'
-    #if frozen app
-    if getattr(sys, 'frozen', False):
-        print ('bundled app in windows')
-        cmd = resource_path('bin/makeblastdb.exe')
-
+    cmd = get_cmd('makeblastdb')
     cline = '%s -dbtype %s -in %s' %(cmd,dbtype,filename)
     subprocess.check_output(cline, shell=True)
     return
@@ -241,9 +265,7 @@ def local_blast(database, query, output=None, maxseqs=50, evalue=0.001,
 
     if output == None:
         output = os.path.splitext(query)[0]+'_blast.txt'
-    if getattr(sys, 'frozen', False):
-        print ('bundled app in windows')
-        cmd = resource_path('bin/%s.exe' %cmd)
+    cmd = get_cmd(cmd)
 
     from Bio.Blast.Applications import NcbiblastxCommandline
     outfmt = '"6 qseqid sseqid qseq sseq pident qcovs length mismatch gapopen qstart qend sstart send evalue bitscore stitle"'
@@ -311,12 +333,7 @@ def clustal_alignment(filename=None, seqs=None, command="clustalw"):
         filename = 'temp.faa'
         SeqIO.write(seqs, filename, "fasta")
     name = os.path.splitext(filename)[0]
-    if platform.system() == 'Windows':
-        command = 'clustalw2'
-    #if bundled app in windows use custom binary location
-    if getattr(sys, 'frozen', False):
-        command = resource_path('bin/clustalw2.exe')
-        print (command)
+    command = get_cmd('clustalw2')       
 
     from Bio.Align.Applications import ClustalwCommandline
     cline = ClustalwCommandline(command, infile=filename)

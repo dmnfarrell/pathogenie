@@ -22,6 +22,7 @@
 
 from __future__ import absolute_import, print_function
 import sys,os,subprocess,glob,re
+import platform
 import urllib, hashlib, shutil
 import tempfile
 import pandas as pd
@@ -73,6 +74,16 @@ if not os.path.exists(config_path):
     except:
         os.makedirs(config_path)
 
+def check_platform():
+    """See if we are running in Windows"""
+
+    if platform.system() == 'Windows':
+        print('checking binaries are present')
+        tools.fetch_binaries()
+    return
+
+check_platform()
+
 def check_databases():
     """download databases"""
 
@@ -80,23 +91,6 @@ def check_databases():
     os.makedirs(dbdir, exist_ok=True)
     for name in db_names:
         fetch_sequence_from_url(name)
-    return
-
-def fetch_binaries():
-    """Get windows binaries -- windows only"""
-
-    url = "https://github.com/dmnfarrell/pygenefinder/raw/master/win_binaries/"
-    path = os.path.join(config_path, 'binaries')
-    os.makedirs(path, exist_ok=True)
-    names = ['aragorn.exe','blastn.exe','blastp.exe','makeblastdb.exe',
-            'hmmscan.exe','hmmpress.exe','prodigal.exe','msys-2.0.dll','clustalw2.exe']
-    for n in names:
-        filename = os.path.join(path,n)
-        if os.path.exists(filename):
-            continue
-        link = os.path.join(url,n)
-        print (filename,link)
-        urllib.request.urlretrieve(link, filename)
     return
 
 def fetch_sequence_from_url(name='card', path=None, ext='.fa'):
@@ -265,9 +259,7 @@ def create_locus_tag(filename):
 def prodigal(infile):
     """Run prodigal"""
 
-    cmd = 'prodigal'
-    if getattr(sys, 'frozen', False):
-        cmd = tools.resource_path('bin/prodigal.exe')
+    cmd = tools.get_cmd('prodigal')
     #name = os.path.splitext(infile)[0]
     name = os.path.join(tempdir,'prodigal')
     cmd = '{c} -i {i} -c -m -a {n}.faa -f gff -o {n}.gff -p single'.format(i=infile,c=cmd,n=name)
@@ -289,12 +281,10 @@ def hmmer(infile, threads=4, hmm_file=None):
 
     def get_contig(x):
         return ('_').join(x.split('_')[:-1])
-    if getattr(sys, 'frozen', False):
-        hmmpresscmd = tools.resource_path('bin/hmmpress.exe')
-        hmmscancmd = tools.resource_path('bin/hmmscan.exe')
-    else:
-        hmmpresscmd = 'hmmpress'
-        hmmscancmd = 'hmmscan'
+    
+    hmmpresscmd = tools.get_cmd('hmmpress')
+    hmmscancmd = tools.get_cmd('hmmscan')
+
     df = tools.fasta_to_dataframe(infile)
     fetch_sequence_from_url('HAMAP.hmm', hmmdir, ext='')
     db = os.path.join(hmmdir,'HAMAP.hmm')
@@ -318,9 +308,7 @@ def aragorn(infile):
     """Run aragorn"""
 
     outfile = os.path.join(tempdir, 'aragorn.txt')
-    cmd = 'aragorn'
-    if getattr(sys, 'frozen', False):
-        cmd = tools.resource_path('bin/aragorn.exe')
+    cmd = tools.get_cmd('aragorn')
     cmd = '{c} -l -gcbact -t -w {i} -o {o}'.format(c=cmd,i=infile,o=outfile)
     tmp = subprocess.check_output(cmd, shell=True)
     df = tools.read_aragorn(outfile)
