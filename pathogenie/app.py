@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    pygenefinder cmd line tool.
+    pathogenie cmd line tool.
     Created Nov 2019
     Copyright (C) Damien Farrell
 
@@ -36,7 +36,7 @@ from . import tools
 
 tempdir = tempfile.gettempdir()
 home = os.path.expanduser("~")
-config_path = os.path.join(home,'.config/pygenefinder')
+config_path = os.path.join(home,'.config/pathogenie')
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'data')
 dbdir = os.path.join(config_path, 'db')
@@ -60,8 +60,8 @@ links = {'card':'https://github.com/tseemann/abricate/raw/master/db/card/sequenc
         'sprot_archaea':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Archaea/sprot',
         'amr':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/AMR',
         'IS':'https://raw.githubusercontent.com/tseemann/prokka/master/db/kingdom/Bacteria/IS',
-        'bacteria.16SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.16SrRNA.fna',
-        'bacteria.23SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pygenefinder/master/db/bacteria.23SrRNA.fna',
+        'bacteria.16SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pathogenie/master/db/bacteria.16SrRNA.fna',
+        'bacteria.23SrRNA': 'https://raw.githubusercontent.com/dmnfarrell/pathogenie/master/db/bacteria.23SrRNA.fna',
         'HAMAP.hmm':'https://github.com/tseemann/prokka/raw/master/db/hmm/HAMAP.hmm',
         'TIGRFAMS':'ftp://ftp.jcvi.org/pub/data/TIGRFAMs/TIGRFAMs_15.0_HMM.tar.gz',
         'PFAM-A':'ftp://ftp.ebi.ac.uk/pub/databases/Pfam/current_release/Pfam-A.hmm.gz' }
@@ -268,8 +268,11 @@ def prodigal(infile):
     return resfile
 
 def get_prodigal_coords(x):
+    """Extract prodigal coordinate information"""
+
     s = re.split('\#|\s',x.replace(' ',''))
     coords = [int(i) for i in s[1:4]]
+    coords[0] = coords[0]-1
     return  pd.Series(coords)
 
 def prokka_header_info(x):
@@ -281,7 +284,7 @@ def hmmer(infile, threads=4, hmm_file=None):
 
     def get_contig(x):
         return ('_').join(x.split('_')[:-1])
-    
+
     hmmpresscmd = tools.get_cmd('hmmpress')
     hmmscancmd = tools.get_cmd('hmmscan')
 
@@ -457,7 +460,7 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
         rec.seq.alphabet = generic_dna
         rec.id = label
         rec.name = label
-        rec.COMMENT = 'annotated with pygenefinder'
+        rec.COMMENT = 'annotated with pathogenie'
         df = df.sort_values('start')
         qcols = ['gene','product','locus_tag','translation','length']
         for i,row in df.iterrows():

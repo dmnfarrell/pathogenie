@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    pygenefinder GUI.
+    pathogenie GUI.
     Created Nov 2019
     Copyright (C) Damien Farrell
 
@@ -38,13 +38,13 @@ home = os.path.expanduser("~")
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 logoimg = os.path.join(module_path, 'logo.png')
 
-class pygenefinderApp(QMainWindow):
+class pathogenieApp(QMainWindow):
     """GUI Application using PySide2 widgets"""
     def __init__(self, filenames=[], project=None):
 
         QMainWindow.__init__(self)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-        self.setWindowTitle("pygenefinder")
+        self.setWindowTitle("pathogenie")
 
         self.setWindowIcon(QIcon(logoimg))
         self.create_menu()
@@ -109,7 +109,7 @@ class pygenefinderApp(QMainWindow):
         self.info.setFont(font)
         #l2.addWidget(self.info)
         self.right_tabs.addTab(self.info, 'log')
-        self.info.setText("Welcome to pygenefinder")
+        self.info.setText("Welcome to pathogenie")
         self.m.setSizes([50,200,150])
         self.m.setStretchFactor(1,0)
 
@@ -820,10 +820,10 @@ class pygenefinderApp(QMainWindow):
         """Open the online documentation"""
 
         import webbrowser
-        link='https://github.com/dmnfarrell/pygenefinder'
+        link='https://github.com/dmnfarrell/pathogenie'
         webbrowser.open(link,autoraise=1)
 
-        #web = QWebEngineView(QUrl('https://github.com/dmnfarrell/pygenefinder'))
+        #web = QWebEngineView(QUrl('https://github.com/dmnfarrell/pathogenie'))
         #web.load(QUrl())
         #web.show()
         return
@@ -842,7 +842,7 @@ class pygenefinderApp(QMainWindow):
         else:
             snap=''
 
-        text='pygenefinder GUI\n'\
+        text='pathogenie GUI\n'\
                 +'version '+__version__+snap+'\n'\
                 +'Copyright (C) Damien Farrell 2019-\n'\
                 +'This program is free software; you can redistribute it and/or '\
@@ -933,7 +933,7 @@ def main():
 
     import sys, os
     from argparse import ArgumentParser
-    parser = ArgumentParser(description='pygenefinder gui tool')
+    parser = ArgumentParser(description='pathogenie gui tool')
     parser.add_argument("-f", "--fasta", dest="filenames",default=[],
                         help="input fasta file", metavar="FILE")
     parser.add_argument("-p", "--proj", dest="project",default=None,
@@ -941,7 +941,7 @@ def main():
     args = vars(parser.parse_args())
 
     app = QApplication(sys.argv)
-    aw = pygenefinderApp(**args)
+    aw = pathogenieApp(**args)
     aw.show()
     app.exec_()
 

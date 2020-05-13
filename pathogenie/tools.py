@@ -40,7 +40,7 @@ datadir = os.path.join(module_path, 'data')
 featurekeys = ['type','protein_id','locus_tag','gene','db_xref',
                'product', 'note', 'translation','pseudo','start','end','strand']
 
-config_path = os.path.join(home,'.config','pygenefinder')
+config_path = os.path.join(home,'.config','pathogenie')
 bin_path = os.path.join(config_path, 'binaries')
 
 def resource_path(relative_path):
@@ -61,11 +61,11 @@ def get_cmd(cmd):
 def fetch_binaries():
     """Get windows binaries -- windows only"""
 
-    url = "https://github.com/dmnfarrell/pygenefinder/raw/master/win_binaries/"
+    url = "https://github.com/dmnfarrell/pathogenie/raw/master/win_binaries/"
     path = os.path.join(config_path, 'binaries')
     os.makedirs(path, exist_ok=True)
     names = ['aragorn.exe','blastn.exe','blastp.exe','makeblastdb.exe',
-            'hmmscan.exe','hmmpress.exe','prodigal.exe','msys-2.0.dll','clustalw2.exe']
+            'hmmscan.exe','hmmpress.exe','prodigal.exe','msys-2.0.dll','clustalw.exe']
     for n in names:
         filename = os.path.join(path,n)
         if os.path.exists(filename):
@@ -333,7 +333,7 @@ def clustal_alignment(filename=None, seqs=None, command="clustalw"):
         filename = 'temp.faa'
         SeqIO.write(seqs, filename, "fasta")
     name = os.path.splitext(filename)[0]
-    command = get_cmd('clustalw2')       
+    command = get_cmd('clustalw')
 
     from Bio.Align.Applications import ClustalwCommandline
     cline = ClustalwCommandline(command, infile=filename)

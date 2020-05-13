@@ -1,9 +1,9 @@
-name: pygenefinder
+name: pathogenie
 version: 'latest'
 #version-script: git describe --abbrev=1 --tags
 summary: microbial gene finder
 description: |
-  pygenefinder is an open source desktop application
+  pathogenie is an open source desktop application
   for microbial gene identification in sequence data
 
 base: core18
@@ -12,13 +12,13 @@ confinement: strict
 icon: gui/icon.png
 
 apps:
-  pygenefinder:
-    command: desktop-launch $SNAP/bin/pygenefindergui
+  pathogenie:
+    command: desktop-launch $SNAP/bin/pathogenie-gui
     plugs: [desktop,home]
     environment:
       LD_LIBRARY_PATH: $SNAP/usr/lib/ncbi-blast+
 parts:
-  pygenefinder:
+  pathogenie:
     plugin: python
     python-version: python3
     source: ../

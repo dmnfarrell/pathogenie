@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-    AMR finder spec file for pyinstaller.
+    pathogenie spec file for pyinstaller.
     Created Nov 2019
     Copyright (C) Damien Farrell
 
@@ -32,8 +32,8 @@ a = Analysis(['main.py'],
              win_private_assemblies=False,
              cipher=block_cipher,
              noarchive=False,
-             datas=[ ('pygenefinder/logo.png', 'pygenefinder/'),
-                     ('pygenefinder/data/*', 'pygenefinder/data/')  ])
+             datas=[ ('pathogenie/logo.png', 'pathogenie/'),
+                     ('pathogenie/data/*', 'pathogenie/data/')  ])
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
 
@@ -59,7 +59,7 @@ exe = EXE(pyz,
           a.scripts,
           [],
           exclude_binaries=True,
-          name='pygenefinder.exe',
+          name='pathogenie.exe',
           debug=False,
           bootloader_ignore_signals=False,
           strip=False,
@@ -73,4 +73,4 @@ coll = COLLECT(exe,
                strip=False,
                upx=True,
                upx_exclude=[],
-               name='pygenefinder')
+               name='pathogenie')

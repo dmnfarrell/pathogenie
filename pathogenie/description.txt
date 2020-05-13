@@ -1,7 +1,7 @@
 Background
 ----------
 
-This is a Python package for detecting genes in bacterial and viral nucleotide sequences.
+This is a Python package for gene annotation and detecting genes in bacterial and viral nucleotide sequences.
 These genes could be antibiotic resistance (AMR) proteins or any arbitrary target sequences.
 It uses Blast to find hits to known gene sequences from sequence databases. The inputs are fasta files.
 
@@ -18,16 +18,16 @@ future
 Installation
 ------------
 
-  pip install pygenefinder
+  pip install pathogenie
 
 Usage
 -----
 
-  pygenefinder -p <path-to-fasta-files> -d <database>
+  pathogenie -p <path-to-fasta-files> -d <database>
 
 Links
 -----
 
-* https://github.com/dmnfarrell/pygenefinder
+* https://github.com/dmnfarrell/pathogenie
 
 * https://github.com/tseemann/abricate

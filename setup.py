@@ -1,20 +1,20 @@
 from setuptools import setup
 import sys,os
 
-with open('pygenefinder/description.txt') as f:
+with open('pathogenie/description.txt') as f:
     long_description = f.read()
 
 setup(
-    name = 'pygenefinder',
-    version = '0.2.0',
-    description = 'find amr genes from fasta sequences',
+    name = 'pathogenie',
+    version = '0.3.0',
+    description = 'find or annotate microbial genes',
     long_description = long_description,
-    url='https://github.com/dmnfarrell/pygenefinder',
+    url='https://github.com/dmnfarrell/pathogenie',
     license='GPL v3',
     author = 'Damien Farrell',
     author_email = 'farrell.damien@gmail.com',
-    packages = ['pygenefinder'],
-    package_data={'pygenefinder': ['data/*.*','logo.png',
+    packages = ['pathogenie'],
+    package_data={'pathogenie': ['data/*.*','logo.png',
                   'description.txt']
                  },
     install_requires=['numpy>=1.10',
@@ -25,8 +25,8 @@ setup(
                       'future'],
     entry_points = {
         'console_scripts': [
-            'pygenefinder=pygenefinder.app:main',
-            'pygenefindergui=pygenefinder.gui:main']
+            'pathogenie=pathogenie.app:main',
+            'pathogenie-gui=pathogenie.gui:main']
             },
     classifiers = ['Operating System :: OS Independent',
             'Programming Language :: Python :: 2.7',
