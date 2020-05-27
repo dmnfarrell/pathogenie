@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-    AMR finder main.
+    pathogenie main.
     Created Nov 2019
     Copyright (C) Damien Farrell
 
@@ -21,20 +21,20 @@
 """
 
 from PySide2.QtWidgets import *
-from pygenefinder import gui
+from pathogenie import gui
 
 def main():
     "Run the application"
 
     import sys, os
     from argparse import ArgumentParser
-    parser = ArgumentParser(description='pygenefinder tool')
+    parser = ArgumentParser(description='pathogenie tool')
     parser.add_argument("-f", "--fasta", dest="filename",
                         help="input fasta file", metavar="FILE")
     args = vars(parser.parse_args())
 
     app = QApplication(sys.argv)
-    aw = gui.pygenefinderApp()
+    aw = gui.pathogenieApp()
     aw.show()
     app.exec_()
 

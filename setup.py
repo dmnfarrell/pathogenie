@@ -21,6 +21,7 @@ setup(
                       'pandas>=0.24',
                       'matplotlib>=3.0',
                       'biopython>=1.5',
+                      'bcbio_gff',
                       #'pyside2>=5.1',
                       'future'],
     entry_points = {

@@ -1,7 +1,8 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPL%20v3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-<img align="right" src=img/logo.png width=180px>
 
 # pathogenie
+
+<img align="right" src=img/logo.png width=180px>
 
 This is a desktop and command line program for annotating draft bacterial and viral genomes. It may also be used for quickly detecting arbitrary sequences such as antibiotic resistance genes (AMR) proteins in nucleotide sequences. It uses Blast to find hits to known gene sequences from sequence databases. The inputs are fasta files. Annotation is performed in a similar manner to Prokka and first  requires an assembled genome if you have sequenced reads. The program is written in Python.
 

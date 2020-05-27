@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-    Qt widgets for pygenefinder.
+    Qt widgets for pathogenie
     Created Nov 2019
     Copyright (C) Damien Farrell
 
