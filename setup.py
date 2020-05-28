@@ -22,7 +22,7 @@ setup(
                       'matplotlib>=3.0',
                       'biopython>=1.5',
                       'bcbio_gff',
-                      #'pyside2>=5.1',
+                      'pyside2>=5.1',
                       'future'],
     entry_points = {
         'console_scripts': [

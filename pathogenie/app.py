@@ -36,7 +36,7 @@ from . import tools
 
 tempdir = tempfile.gettempdir()
 home = os.path.expanduser("~")
-config_path = os.path.join(home,'.config/pathogenie')
+config_path = os.path.join(home,'.config','pathogenie')
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
 datadir = os.path.join(module_path, 'data')
 dbdir = os.path.join(config_path, 'db')

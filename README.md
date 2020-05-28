@@ -4,19 +4,15 @@
 
 <img align="right" src=img/logo.png width=180px>
 
-This is a desktop and command line program for annotating draft bacterial and viral genomes. It may also be used for quickly detecting arbitrary sequences such as antibiotic resistance genes (AMR) proteins in nucleotide sequences. It uses Blast to find hits to known gene sequences from sequence databases. The inputs are fasta files. Annotation is performed in a similar manner to Prokka and first  requires an assembled genome if you have sequenced reads. The program is written in Python.
+This is a desktop and command line program for annotating draft bacterial and viral genomes. It may also be used for quickly detecting arbitrary sequences such as antibiotic resistance genes (AMR) proteins in nucleotide sequences. It uses Blast to find hits to known gene sequences from sequence databases. The inputs are fasta files. Annotation is performed in a similar manner to Prokka and first requires an assembled genome if you have sequenced reads. The program is written in Python. Currently it is available as a graphical desktop application. A command line tool will also be added. You can also used from inside Python.
 
 ## Usage
 
-From the command line:
+The graphical application can be launched from the terminal using:
 
-```pathogenie -p <path-to-fasta-files> -d <database>```
+```pathogenie-gui```
 
-or
-
-```pathogenie -f <filename> -d <database>```
-
-This program utilises the sequence databases compiled by abricate. Possible database names:
+From the GUI you may load fasta files into a table and then run genome annotation or gene finding with custom databases. This program utilises the sequence databases for gene finding compiled by abricate:
 
 * card
 * resfinder
@@ -25,13 +21,20 @@ This program utilises the sequence databases compiled by abricate. Possible data
 * ncbi
 * ecoh
 
-You can also use a graphical application. It can be launched from the terminal using:
-
-```pathogenie-gui```
+The GUI layout is shown below:
 
 <img src=img/screenshot1.png width=480px>
 
-There is a self-contained graphical application for windows users (see below).
+## Using in python
+
+Run an annotation on a fasta file like a set of contigs:
+
+```python
+import pathogenie
+featdf,recs = pathogenie.app.run_annotation(filename, threads=10, kingdom='bacteria')
+#save to genbank
+pathogenie.tools.recs_to_genbank(recs, gbfile)
+```
 
 ## Installation
 
@@ -47,19 +50,21 @@ You require ncbi-blast+ tools and clustalw for basic gene finding. The following
 * hmmer3
 * aragorn
 
-Windows: these will be downloaded for you when you launch the program.
+### Windows
 
-Linux: these can all be installed on Debian/Ubuntu based systems using:
+These executables will be downloaded for you when you first launch the program.
 
-```apt install ncbi-blast+ clustal prodigal aragorn hmmer```
+Blast also requires the Visual Studio 2015 C++ redistributable runtime package: https://www.microsoft.com/en-us/download/details.aspx?id=48145
 
-OSX: **Not tested** but may work if you can install the dependencies. You can probably install them with bioconda.
+### Linux
 
-### Windows GUI
+The external binaries can all be installed on Debian/Ubuntu based systems using:
 
-Most windows users will probably want to use the bundled graphical application. [Download current version here](https://github.com/dmnfarrell/pathogenie/releases/download/0.1.0/pathogenie-0.1.0-win64.zip). Just unzip to a folder and launch the program **pathogenie.exe**.
+```sudo apt install ncbi-blast+ clustal prodigal aragorn hmmer```
 
-This has all the dependencies bundled with the program.
+### OSX
+
+**Not yet tested** but may work if you can install the dependencies. You can probably install them with bioconda.
 
 ## Links
 
