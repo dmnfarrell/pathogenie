@@ -347,12 +347,12 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
     using prodigal and blast to prokka seqs. Writes a genbank file to the
     same folder.
     Args:
-        prefix: prefix for locus_tags
         infile: input fasta file
-        outfile: output genbank
-        hmmer: run hmmer
+        prefix: prefix for locus_tags
+        threads: cpu threads to use
+        kingdom: 'bacteria', 'viruses' or 'archaea'
     returns:
-        a list of SeqRecords with the features
+        a dataframe of annotations and a list of SeqRecords with the features, one per contig
     """
 
     #get simple name for contig
@@ -477,7 +477,13 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
     return res,recs
 
 def annotate_files(recs, keys=None, outdir='annot', kingdom='bacteria'):
-    """Annotate a set of nucleotide seqrecords."""
+    """Annotate a set of nucleotide seqrecords.
+    Args:
+        recs: list of SeqRecords
+        outdir: output folder to save genbank files
+        kingdom: 'bacteria', 'viruses' or 'archaea'
+    Returns: a dataframe with annotations.
+    """
 
     res = []
     for label in recs:
