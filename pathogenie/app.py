@@ -279,6 +279,14 @@ def prokka_header_info(x):
     s = re.split('~~~',x)
     return pd.Series(s)
 
+def uniprot_header_info(x):
+    s = x.split('|')
+    y = re.split('OS=|GN=|OX=|PE=|SV=',s[2])
+    product = y[0]
+    pid = s[1]
+    gene = y[3]
+    return pd.Series([pid,gene,product,''])
+
 def hmmer(infile, threads=4, hmm_file=None):
     """Run hmmer"""
 
@@ -299,7 +307,8 @@ def hmmer(infile, threads=4, hmm_file=None):
     print (cmd)
     tmp = subprocess.check_output(cmd, shell=True)
     h = tools.read_hmmer3(outfile)
-    #print (df)
+    if h is None:
+        return
     df = h.merge(df,on='name',how='left')
     #print (df[:5])
     #get coords from prodigal fasta heading if available
@@ -341,16 +350,20 @@ def add_protein_db(filename):
     shutil.copy(filename, newpath)
     return
 
-def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria', **kwargs):
+def run_annotation(infile, prefix=None, ident=70, threads=4,
+                   kingdom='bacteria', trusted=None, trusted_format='uniprot',
+                   **kwargs):
     """
     Annotate nucelotide sequences (usually a draft assembly with contigs)
     using prodigal and blast to prokka seqs. Writes a genbank file to the
     same folder.
     Args:
         infile: input fasta file
-        prefix: prefix for locus_tags
+        prefix: optional prefix for locus_tags
+        ident: minimum percent identity for blast results, default 70
         threads: cpu threads to use
         kingdom: 'bacteria', 'viruses' or 'archaea'
+        trusted: optional fasta file of trusted protein sequences for blast
     returns:
         a dataframe of annotations and a list of SeqRecords with the features, one per contig
     """
@@ -361,8 +374,8 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
     if prefix == None:
         prefix = create_locus_tag(infile)
     sprot = 'sprot_%s' %kingdom
-    dbs = ['IS','amr',sprot]
-    evalues = [1e-10,1e-100,1e-4]
+    dbs = ['IS','amr',trusted,sprot]
+    evalues = [1e-10,1e-100,1e-4,1e-4]
     #run prodigal
     resfile = prodigal(infile)
     #read in prodigal fasta to dataframe
@@ -381,21 +394,31 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
     res = []
     i=0
     for db in dbs:
+        if db is None:
+            i+=1
+            continue
         fetch_sequence_from_url(db, path=prokkadbdir)
         #make blast db of prokka proteins
-        dbname = os.path.join(prokkadbdir,'%s.fa' %db)
+        if db in ['IS','amr',sprot]:
+            dbname = os.path.join(prokkadbdir,'%s.fa' %db)
+        else:
+            dbname = db
         tools.make_blast_database(dbname, dbtype='prot')
         print ('blasting %s ORFs to %s' %(len(seqs),db))
         bl = tools.blast_sequences(dbname, seqs, maxseqs=1, evalue=evalues[i],
                                     cmd='blastp', show_cmd=True, threads=threads, **kwargs)
         bl = bl[bl.pident>ident]
+        #print (bl)
         if len(bl)==0:
             i+=1
             continue
-        bl[['protein_id','gene','product','cog']] = bl.stitle.apply(prokka_header_info,1)
-
+        #get hit info from header (prokka format)
+        try:
+            bl[['protein_id','gene','product','cog']] = bl.stitle.apply(prokka_header_info,1)
+        except:
+            bl[['protein_id','gene','product','cog']] = bl.stitle.apply(uniprot_header_info,1)
         cols = ['qseqid','sseqid','pident','sstart','send','protein_id','gene','product']
-        #print (len(bl))
+
         bl = bl.sort_values(['qseqid','pident'], ascending=False).drop_duplicates(['qseqid'])[cols]
         #print (len(bl))
 
@@ -420,8 +443,8 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
         #write unknowns out
         SeqIO.write(seqs,'unknowns.fa','fasta')
         hmmdf = hmmer('unknowns.fa', threads=threads)
-        #print (hmmdf.dtypes)
-        res = pd.concat([res,hmmdf], sort=False)
+        if hmmdf is not None:
+            res = pd.concat([res,hmmdf], sort=False)
 
     #get tRNAs with aragorn
     print ('running aragorn')
@@ -474,6 +497,7 @@ def run_annotation(infile, prefix=None, ident=70, threads=4, kingdom='bacteria',
             rec.features.append(feat)
             l+=1
         recs.append(rec)
+    print ('done')
     return res,recs
 
 def annotate_files(recs, keys=None, outdir='annot', kingdom='bacteria'):

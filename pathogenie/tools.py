@@ -143,6 +143,7 @@ def gff_to_features(gff_file):
     return rec.features
 
 def save_gff(recs, outfile):
+
     f = open(outfile,'w')
     from BCBio import GFF
     for r in recs:
@@ -666,6 +667,8 @@ def read_hmmer3(infile):
         res.append([qr.id, hit.id, hit.bitscore,hit.evalue,hit.description])
     cols = ['name','query','score','evalue','description']
     df = pd.DataFrame(res,columns=cols)
+    if len(df) == 0:
+        return
     df[['EC','gene','product']] = df.description.apply(lambda x: descr_info(x))
     df = df.drop(columns=['description'])
     df = df.drop_duplicates('query')

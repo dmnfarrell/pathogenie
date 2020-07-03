@@ -119,6 +119,8 @@ class pathogenieApp(QMainWindow):
         self.statusBar.addWidget(self.projectlabel, 1)
         self.outdirLabel = QLabel("")
         self.statusBar.addWidget(self.outdirLabel, 1)
+        self.trustedLabel = QLabel("")
+        self.statusBar.addWidget(self.trustedLabel, 1)
         self.progressbar = QProgressBar()
         self.progressbar.setRange(0,1)
         self.statusBar.addWidget(self.progressbar, 2)
@@ -215,6 +217,7 @@ class pathogenieApp(QMainWindow):
         data['sheets'] = self.sheets
         data['annotations'] = self.annotations
         data['outputdir'] = self.outputdir
+        data['trusted'] = self.trusted
         #data['meta'] = self.saveMeta(table)
         self.projectlabel.setText(filename)
         pickle.dump(data, open(filename,'wb'))
@@ -259,6 +262,7 @@ class pathogenieApp(QMainWindow):
         self.annotations = {}
         self.projectlabel.setText('')
         self.outdirLabel.setText(self.outputdir)
+        self.trusted = None
         return
 
     def load_project(self, filename=None):
@@ -267,7 +271,7 @@ class pathogenieApp(QMainWindow):
         self.clear_project()
         data = pickle.load(open(filename,'rb'))
         inputs = data['inputs']
-        keys = ['sheets','annotations','outputdir']
+        keys = ['sheets','annotations','outputdir','trusted']
         for k in keys:
             if k in data:
                 self.__dict__[k] = data[k]
@@ -282,6 +286,7 @@ class pathogenieApp(QMainWindow):
         self.proj_file = filename
         self.projectlabel.setText(self.proj_file)
         self.outdirLabel.setText(self.outputdir)
+        self.trustedLabel.setText(self.trusted)
         return
 
     def load_project_dialog(self):
@@ -546,15 +551,17 @@ class pathogenieApp(QMainWindow):
                 progress_callback.emit(msg)
                 continue
             progress_callback.emit(row.filename)
-            fdf,recs = app.run_annotation(row.filename, threads=int(kwds['threads']), kingdom=kingdom)
+            fdf,recs = app.run_annotation(row.filename, threads=int(kwds['threads']),
+                                            trusted=self.trusted,
+                                            kingdom=kingdom)
             tools.recs_to_genbank(recs, outfile)
             inputs.loc[i,'genbank'] = outfile
-            self.fasta_table.refresh()
             self.annotations[row.label] = recs
             featcount = int(sum([len(rec.features) for rec in recs]))
             progress_callback.emit('Found %s genes' %featcount)
             progress_callback.emit('Wrote output to %s' %outfile)
             inputs.loc[i,'genes'] = featcount
+            self.fasta_table.refresh()
         return
 
     def annotation_completed(self):
@@ -777,14 +784,9 @@ class pathogenieApp(QMainWindow):
                                     filter="Fasta Files(*.fa *.faa *.fasta);;All Files(*.*)")
         if not filename:
             return
-        #app.add_protein_db(filename)
-        #options = {'name':{'type':'entry','default':90}}
-        #dlg = widgets.DynamicDialog(self, options=options, title='Add Protein File')
-        #dlg.show()
+        self.trusted = filename
         name = os.path.basename(filename)
-        #self.trusted = pd.DataFrame({'name':name,'path':filename})
-        #df = self.trusted
-        #self.opts.widgets['trusted'].addItems([name])
+        self.trustedLabel.setText(name)
         return
 
     def _check_snap(self):
@@ -912,7 +914,7 @@ class AppOptions(widgets.BaseOptions):
         cpus = [str(i) for i in range(1,os.cpu_count()+1)]
         self.groups = {'general':['threads','overwrite'],
                        'blast':['db','identity','coverage','multiple hits'],
-                       'annotation':['kingdom','trusted','hmmer']}
+                       'annotation':['kingdom','hmmer']}
         self.opts = {'threads':{'type':'combobox','default':4,'items':cpus},
                     'overwrite':{'type':'checkbox','default':True},
                     'db':{'type':'combobox','default':'card',
@@ -922,8 +924,8 @@ class AppOptions(widgets.BaseOptions):
                     'multiple hits':{'type':'checkbox','default':False},
                     'kingdom':{'type':'combobox','default':'bacteria',
                     'items':kingdom,'label':'kingdom'},
-                    'trusted':{'type':'combobox','default':'',
-                    'items':trusted,'label':'use trusted'},
+                    #'trusted':{'type':'entry','default':'',
+                    #'items':trusted,'label':'use trusted'},
                     'hmmer':{'type':'checkbox','default':True},
                     }
         return
