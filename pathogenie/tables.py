@@ -28,6 +28,7 @@ from PySide2 import QtCore, QtGui
 from PySide2.QtCore import QObject
 from PySide2.QtWidgets import *
 from PySide2.QtGui import *
+from . import tools
 
 class ColumnHeader(QHeaderView):
     def __init__(self):
@@ -451,7 +452,7 @@ class FeaturesTable(DataFrameTable):
     QTableView with pandas DataFrame as model.
     """
     def __init__(self, parent=None, app=None, dataframe=None, *args):
-        #super(DataFrameTable, self).__init__()
+
         DataFrameTable.__init__(self, parent, dataframe)
         self.app = app
         self.setWordWrap(False)
@@ -461,15 +462,34 @@ class FeaturesTable(DataFrameTable):
         menu = self.menu
         showfeatureAction = menu.addAction("Draw Feature(s)")
         copysequenceAction = menu.addAction("Copy Sequence")
+        showfastasequencesAction = menu.addAction("Show Selected Sequences (fasta)")
+        #showgenbanksequencesAction = menu.addAction("Show Selected Sequences (genbank)")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showfeatureAction:
             self.app.plot_feature(row)
         elif action == copysequenceAction:
             self.copy_sequence(row)
+        elif action == showfastasequencesAction:
+            self.show_sequences()
+        #elif action == showgenbanksequencesAction:
+        #    self.show_sequences(format='gb')
 
     def copy_sequence(self, row):
 
         clip = QApplication.clipboard()
         data = self.model.df.iloc[row]
         clip.setText(data.translation)
+        return
+
+    def show_sequences(self, format='fasta'):
+
+        rows = self.getSelectedRows()
+        #print (rows)
+        data = self.model.df.iloc[rows]
+        recs = tools.dataframe_to_seqrecords(data, idkey='locus_tag',
+                        seqkey='translation', desckey='product', alphabet='protein')
+        self.app.show_info('------------------------------------------------')
+        for rec in recs:
+            print(rec.format(format))
+            self.app.show_info(rec.format(format))
         return

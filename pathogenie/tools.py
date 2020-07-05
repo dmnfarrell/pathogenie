@@ -97,12 +97,16 @@ def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
     SeqIO.write(seqs, outfile, "fasta")
     return outfile
 
-def dataframe_to_seqrecords(df, seqkey='sequence', idkey='id', desckey='description'):
+def dataframe_to_seqrecords(df, seqkey='sequence', idkey='id', desckey='description',
+                            alphabet=None):
     """Dataframe to list of Bio.SeqRecord objects"""
 
+    from Bio.Alphabet import IUPAC
+    if alphabet=='protein':
+        alphabet = IUPAC.protein
     seqs=[]
     for i,r in df.iterrows():
-        s = SeqRecord(Seq(r[seqkey]),id=r[idkey],description=r[desckey])
+        s = SeqRecord(Seq(r[seqkey],alphabet),id=r[idkey],description=r[desckey])
         seqs.append(s)
     return seqs
 

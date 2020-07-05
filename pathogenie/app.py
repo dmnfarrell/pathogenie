@@ -280,6 +280,8 @@ def prokka_header_info(x):
     return pd.Series(s)
 
 def uniprot_header_info(x):
+    """Extract uniprot header info to series"""
+
     s = x.split('|')
     y = re.split('OS=|GN=|OX=|PE=|SV=',s[2])
     product = y[0]

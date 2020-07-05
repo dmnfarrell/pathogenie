@@ -117,13 +117,25 @@ class pathogenieApp(QMainWindow):
         from . import __version__
         self.projectlabel = QLabel('')
         self.statusBar.addWidget(self.projectlabel, 1)
+        self.projectlabel.setAlignment(Qt.AlignLeft)
+        lbl = QLabel("Output folder:")
+        lbl.setAlignment(Qt.AlignRight)
+        self.statusBar.addWidget(lbl,1)
         self.outdirLabel = QLabel("")
         self.statusBar.addWidget(self.outdirLabel, 1)
+        self.outdirLabel.setStyleSheet('color: blue')
+        self.outdirLabel.setAlignment(Qt.AlignLeft)
+        lbl = QLabel("Trusted:")
+        lbl.setAlignment(Qt.AlignRight)
+        self.statusBar.addWidget(lbl,1)
         self.trustedLabel = QLabel("")
         self.statusBar.addWidget(self.trustedLabel, 1)
+        self.trustedLabel.setStyleSheet('color: blue')
+        self.trustedLabel.setAlignment(Qt.AlignLeft)
         self.progressbar = QProgressBar()
         self.progressbar.setRange(0,1)
-        self.statusBar.addWidget(self.progressbar, 2)
+        self.statusBar.addWidget(self.progressbar, 4)
+        self.progressbar.setAlignment(Qt.AlignRight)
         self.setStatusBar(self.statusBar)
         return
 
@@ -286,7 +298,7 @@ class pathogenieApp(QMainWindow):
         self.proj_file = filename
         self.projectlabel.setText(self.proj_file)
         self.outdirLabel.setText(self.outputdir)
-        self.trustedLabel.setText(self.trusted)
+        self.trustedLabel.setText(os.path.basename(self.trusted))
         return
 
     def load_project_dialog(self):
