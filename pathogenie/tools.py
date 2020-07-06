@@ -83,7 +83,7 @@ def read_length_dist(df):
 def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
                      descrkey='description',
                      outfile='out.faa'):
-    """Genbank features to fasta file"""
+    """DataFrame of protein features to a fasta file"""
 
     seqs=[]
     for i,row in df.iterrows():
@@ -91,8 +91,10 @@ def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
             d=row[descrkey]
         else:
             d=''
-        rec = SeqRecord(Seq(row[seqkey]),id=row[idkey],
-                            description=d)
+
+        if type(row[seqkey]) is not str:
+            continue
+        rec = SeqRecord(Seq(row[seqkey]), id=row[idkey], description=d)        
         seqs.append(rec)
     SeqIO.write(seqs, outfile, "fasta")
     return outfile

@@ -68,7 +68,7 @@ class pathogenieApp(QMainWindow):
         if project != None:
             self.load_project(project)
         self.threadpool = QtCore.QThreadPool()
-
+        self.running = False
         return
 
     def setup_gui(self):
@@ -453,7 +453,7 @@ class pathogenieApp(QMainWindow):
         return
 
     def show_feature_table(self):
-        """Show features for input file in table"""
+        """Show features for selected annotation"""
 
         df = self.fasta_table.model.df
         row = self.fasta_table.getSelectedRows()[0]
@@ -584,6 +584,55 @@ class pathogenieApp(QMainWindow):
         df = self.fasta_table.getDataFrame()
         self.fasta_table.refresh()
         self.running = False
+        return
+
+    def find_orthologs(self, sequence, label=''):
+        """Find orthologs of annotated proteins from feature tables
+        across all annotations """
+
+        if self.running == True:
+            return
+        #make blast db of all proteins in current annotations
+        self.make_annotations_blastdb()
+        #blast selected protein to it and get best hits
+        self.opts.applyOptions()
+        kwds = self.opts.kwds
+        threads = kwds['threads']
+        ident = kwds['blast_identity']
+        coverage = kwds['blast_coverage']
+        target = os.path.join(app.tempdir, 'proteins.fasta')
+        bl = tools.blast_sequences(target, [sequence], maxseqs=100, evalue=1e-4,
+                               cmd='blastp', show_cmd=True, threads=int(threads))
+        bl = bl[bl.pident>ident]
+        bl['qlength'] = bl.sequence.str.len()
+        bl['coverage'] = bl.length/bl.qlength*100
+        bl = bl[bl.coverage>coverage]
+        bl = bl.drop(columns=['qseq'])
+        #print (bl)
+        #add a table
+        self.add_table(label+'_orthologs',bl)
+        #align proteins
+        outfile = os.path.join(app.tempdir, 'hits.fasta')
+        tools.dataframe_to_fasta(bl, seqkey='sseq', idkey='sseqid', outfile=outfile)
+        aln = tools.clustal_alignment(outfile)
+        self.show_info(aln.format('clustal'))
+        return
+
+    def make_annotations_blastdb(self):
+        """Make a blast database of all annotated proteins """
+
+        #files = self.fasta_table.
+        #app.make_target_database(files)
+        outfile = os.path.join(app.tempdir, 'proteins.fasta')
+        result = []
+        for name in self.annotations:
+            print (name)
+            recs = self.annotations[name]
+            df = tools.records_to_dataframe(recs)
+            result.append(df)
+        featsdf = pd.concat(result)
+        tools.dataframe_to_fasta(featsdf, descrkey='product', outfile=outfile)
+        tools.make_blast_database(outfile, dbtype='prot')
         return
 
     def run_gene_finder(self, progress_callback):
@@ -926,7 +975,7 @@ class AppOptions(widgets.BaseOptions):
         cpus = [str(i) for i in range(1,os.cpu_count()+1)]
         self.groups = {'general':['threads','overwrite'],
                        'blast':['db','identity','coverage','multiple hits'],
-                       'annotation':['kingdom','hmmer']}
+                       'annotation':['kingdom','hmmer','blast_identity','blast_coverage']}
         self.opts = {'threads':{'type':'combobox','default':4,'items':cpus},
                     'overwrite':{'type':'checkbox','default':True},
                     'db':{'type':'combobox','default':'card',
@@ -936,8 +985,8 @@ class AppOptions(widgets.BaseOptions):
                     'multiple hits':{'type':'checkbox','default':False},
                     'kingdom':{'type':'combobox','default':'bacteria',
                     'items':kingdom,'label':'kingdom'},
-                    #'trusted':{'type':'entry','default':'',
-                    #'items':trusted,'label':'use trusted'},
+                    'blast_identity':{'type':'entry','default':70},
+                    'blast_coverage':{'type':'entry','default':90},
                     'hmmer':{'type':'checkbox','default':True},
                     }
         return

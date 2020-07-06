@@ -24,6 +24,8 @@ from __future__ import absolute_import, print_function
 import sys,os,platform
 import pandas as pd
 import numpy as np
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
 from PySide2 import QtCore, QtGui
 from PySide2.QtCore import QObject
 from PySide2.QtWidgets import *
@@ -123,22 +125,9 @@ class DataFrameTable(QTableView):
             filename, _ = QFileDialog.getOpenFileName(self,"Import File",
                                                       "","All Files (*);;Text Files (*.txt);;CSV files (*.csv)",
                                                       options=options)
-
-
             df = pd.read_csv(filename, **kwargs)
             self.table.model.df = df
         return
-
-    def plot(self):
-        self.table.pf.replot()
-        return
-
-    def createPlotViewer(self, parent):
-        """Create a plot widget attached to this table"""
-
-        if self.pf == None:
-            self.pf = plotting.PlotViewer(table=self.table, parent=parent)
-        return self.pf
 
     def info(self):
 
@@ -285,6 +274,13 @@ class DataFrameTable(QTableView):
         dialogs.ImportDialog(self)
         return
 
+    def exportTable(self):
+        filename, _ = QFileDialog.getSaveFileName(self, "Export",
+                                                  "","csv files (*.csv);;All files (*.*)")
+        if filename:
+            self.model.df.to_csv(filename)
+        return
+
 class DataFrameModel(QtCore.QAbstractTableModel):
     def __init__(self, dataframe=None, *args):
         super(DataFrameModel, self).__init__()
@@ -341,6 +337,9 @@ class DataFrameModel(QtCore.QAbstractTableModel):
     def setData(self):
         self.dataChanged.emit()
 
+    def onDataChanged(self):
+        print (self.df)
+
 class DefaultTable(DataFrameTable):
     """
     QTableView with pandas DataFrame as model.
@@ -382,6 +381,7 @@ class FilesTable(DataFrameTable):
         #plotSummaryAction = menu.addAction("Plot Summary")
         addAnnotationAction = menu.addAction("Add Annotation From File")
         removeAction = menu.addAction("Remove Selected")
+        exportAction = menu.addAction("Export Table")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         # Map the logical row index to a real index for the source model
         #model = self.model
@@ -400,10 +400,10 @@ class FilesTable(DataFrameTable):
             self.app.show_genbank_file()
         elif action == showGFFAction:
             self.app.show_gff_file()
-        #elif action == plotSummaryAction:
-        #    self.app.plot_feature_summary()
         elif action == removeAction:
             self.deleteRows(row)
+        elif action == exportAction:
+            self.exportTable()
         return
 
     def refresh(self):
@@ -463,7 +463,8 @@ class FeaturesTable(DataFrameTable):
         showfeatureAction = menu.addAction("Draw Feature(s)")
         copysequenceAction = menu.addAction("Copy Sequence")
         showfastasequencesAction = menu.addAction("Show Selected Sequences (fasta)")
-        #showgenbanksequencesAction = menu.addAction("Show Selected Sequences (genbank)")
+        findorthologsAction = menu.addAction("Find Orthologs")
+        exportAction = menu.addAction("Export Table")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showfeatureAction:
             self.app.plot_feature(row)
@@ -471,8 +472,10 @@ class FeaturesTable(DataFrameTable):
             self.copy_sequence(row)
         elif action == showfastasequencesAction:
             self.show_sequences()
-        #elif action == showgenbanksequencesAction:
-        #    self.show_sequences(format='gb')
+        elif action == findorthologsAction:
+            self.find_orthologs(row)
+        elif action == exportAction:
+            self.exportTable()
 
     def copy_sequence(self, row):
 
@@ -482,6 +485,7 @@ class FeaturesTable(DataFrameTable):
         return
 
     def show_sequences(self, format='fasta'):
+        """Show selected protein sequences as fasta"""
 
         rows = self.getSelectedRows()
         #print (rows)
@@ -489,7 +493,17 @@ class FeaturesTable(DataFrameTable):
         recs = tools.dataframe_to_seqrecords(data, idkey='locus_tag',
                         seqkey='translation', desckey='product', alphabet='protein')
         self.app.show_info('------------------------------------------------')
+        s=''
         for rec in recs:
-            print(rec.format(format))
-            self.app.show_info(rec.format(format))
+            s += rec.format(format)
+        self.app.show_info(s)
+        return
+
+    def find_orthologs(self, row):
+        """Find orthologs for selected protein"""
+
+        data = self.model.df.iloc[row]
+        name = data.locus_tag+'_'+data.id
+        seq = SeqRecord(Seq(data.translation),id=name)
+        self.app.find_orthologs(seq, label=name)
         return
