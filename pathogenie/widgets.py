@@ -355,11 +355,11 @@ class FileViewer(QDialog):
 
 class SeqFeaturesViewer(QDialog):
     """Sequence records features viewer using dna_features_viewer"""
-    def __init__(self, parent=None, filename=None):
+    def __init__(self, parent=None, filename=None, title='features'):
 
         super(SeqFeaturesViewer, self).__init__(parent)
-        self.setWindowTitle('sequence features')
-        self.setGeometry(QtCore.QRect(200, 200, 1000, 300))
+        self.setWindowTitle(title)
+        self.setGeometry(QtCore.QRect(200, 200, 1000, 400))
         self.setMinimumHeight(150)
         self.add_widgets()
         self.color_map = {
@@ -602,3 +602,30 @@ class PlotViewer(QDialog):
         self.fig = fig
         #self.ax = ax
         return
+
+class Editor(QTextEdit):
+    def __init__(self, parent=None, **kwargs):
+        super(Editor, self).__init__(parent, **kwargs)
+
+    def zoom(self, delta):
+        if delta < 0:
+            self.zoomOut(1)
+        elif delta > 0:
+            self.zoomIn(1)
+
+    def contextMenuEvent(self, event):
+
+        menu = QMenu(self)
+        copyAction = menu.addAction("Copy")
+        clearAction = menu.addAction("Clear")
+        zoominAction = menu.addAction("Zoom In")
+        zoomoutAction = menu.addAction("Zoom Out")
+        action = menu.exec_(self.mapToGlobal(event.pos()))
+        if action == copyAction:
+            self.copy()
+        elif action == clearAction:
+            self.clear()
+        elif action == zoominAction:
+            self.zoom(1)
+        elif action == zoomoutAction:
+            self.zoom(-1)

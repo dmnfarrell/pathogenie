@@ -94,7 +94,7 @@ def dataframe_to_fasta(df, seqkey='translation', idkey='locus_tag',
 
         if type(row[seqkey]) is not str:
             continue
-        rec = SeqRecord(Seq(row[seqkey]), id=row[idkey], description=d)        
+        rec = SeqRecord(Seq(row[seqkey]), id=row[idkey], description=d)
         seqs.append(rec)
     SeqIO.write(seqs, outfile, "fasta")
     return outfile
@@ -476,6 +476,15 @@ def recs_to_genbank(recs, outfile):
         #rec = recs[i]
         SeqIO.write(rec, handle, "genbank")
     handle.close()
+    return
+
+def recs_to_gff(recs, outfile):
+
+    f = open(outfile,'w+')
+    from BCBio import GFF
+    for rec in recs:
+        print (rec)
+        GFF.write([rec], f)
     return
 
 def get_gilist(accs):

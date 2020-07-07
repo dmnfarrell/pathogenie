@@ -101,7 +101,7 @@ class pathogenieApp(QMainWindow):
         self.right_tabs.setTabsClosable(True)
         self.right_tabs.tabCloseRequested.connect(self.close_right_tab)
         l2.addWidget(self.right_tabs)
-        self.info = QTextEdit(right, readOnly=True)
+        self.info = widgets.Editor(right, readOnly=True)
         #self.info.setStyleSheet("font-family: monospace; font-size: 12px;")
         font = QFont("Monospace")
         font.setPointSize(9)
@@ -355,7 +355,7 @@ class pathogenieApp(QMainWindow):
         if kind == 'results':
             t = tables.ResultsTable(self.tabs,  app=self, dataframe=df)
         elif kind == 'features':
-            t = tables.FeaturesTable(self.tabs, app=self, dataframe=df)
+            t = tables.FeaturesTable(self.tabs, app=self, dataframe=df, name=name)
         else:
             t = tables.DefaultTable(self.tabs, app=self, dataframe=df)
         i = self.tabs.addTab(t, name)
@@ -511,7 +511,7 @@ class pathogenieApp(QMainWindow):
         s.load_records(recs)
         s.set_record(recname=data['id'])
         s.slider.setValue(data.start-2000)
-        #s.redraw(start = data.start-2000, end=data.end+2000)
+        s.redraw(start, end)
         s.show()
         return
 
@@ -974,8 +974,9 @@ class AppOptions(widgets.BaseOptions):
         trusted = app.get_files_in_path(app.trustedproteindir)
         cpus = [str(i) for i in range(1,os.cpu_count()+1)]
         self.groups = {'general':['threads','overwrite'],
-                       'blast':['db','identity','coverage','multiple hits'],
-                       'annotation':['kingdom','hmmer','blast_identity','blast_coverage']}
+                       'annotation':['kingdom','hmmer','blast_identity','blast_coverage'],
+                       'gene finding':['db','identity','coverage','multiple hits']
+                       }
         self.opts = {'threads':{'type':'combobox','default':4,'items':cpus},
                     'overwrite':{'type':'checkbox','default':True},
                     'db':{'type':'combobox','default':'card',

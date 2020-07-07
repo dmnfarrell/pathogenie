@@ -26,11 +26,12 @@ import pandas as pd
 import numpy as np
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
+from Bio import SeqIO
 from PySide2 import QtCore, QtGui
 from PySide2.QtCore import QObject
 from PySide2.QtWidgets import *
 from PySide2.QtGui import *
-from . import tools
+from . import tools, widgets
 
 class ColumnHeader(QHeaderView):
     def __init__(self):
@@ -212,7 +213,7 @@ class DataFrameTable(QTableView):
 
         hheader = self.horizontalHeader()
         column = hheader.logicalIndexAt(hheader.mapFromGlobal(pos))
-        print (column)
+        #print (column)
         model = self.model
         menu = QMenu(self)
         setIndexAction = menu.addAction("Set as Index")
@@ -302,7 +303,7 @@ class DataFrameModel(QtCore.QAbstractTableModel):
         return len(self.df.columns.values)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
-        #types = [int, np.int64, float]
+
         if role == QtCore.Qt.DisplayRole:
             i = index.row()
             j = index.column()
@@ -316,6 +317,7 @@ class DataFrameModel(QtCore.QAbstractTableModel):
             return QColor(self.bg)
 
     def headerData(self, col, orientation, role):
+
         if orientation == QtCore.Qt.Horizontal and role == QtCore.Qt.DisplayRole:
             return self.df.columns[col]
         if orientation == QtCore.Qt.Vertical and role == QtCore.Qt.DisplayRole:
@@ -334,11 +336,23 @@ class DataFrameModel(QtCore.QAbstractTableModel):
         self.layoutChanged.emit()
         return
 
-    def setData(self):
-        self.dataChanged.emit()
+    def setData(self, index, value, role=QtCore.Qt.EditRole):
+        """Set data"""
+
+        #print (index)
+        i = index.row()
+        j = index.column()
+        curr = self.df.iloc[i,j]
+        #if curr != value:
+        #    self.df.iloc[i,j] = value
+        #self.dataChanged.emit()
+        return True
 
     def onDataChanged(self):
         print (self.df)
+
+    def flags(self, index):
+            return Qt.ItemIsSelectable|Qt.ItemIsEnabled|Qt.ItemIsEditable
 
 class DefaultTable(DataFrameTable):
     """
@@ -451,10 +465,11 @@ class FeaturesTable(DataFrameTable):
     """
     QTableView with pandas DataFrame as model.
     """
-    def __init__(self, parent=None, app=None, dataframe=None, *args):
+    def __init__(self, parent=None, app=None, dataframe=None, name=None, *args):
 
         DataFrameTable.__init__(self, parent, dataframe)
         self.app = app
+        self.name = name
         self.setWordWrap(False)
 
     def addActions(self, event, row):
@@ -462,20 +477,40 @@ class FeaturesTable(DataFrameTable):
         menu = self.menu
         showfeatureAction = menu.addAction("Draw Feature(s)")
         copysequenceAction = menu.addAction("Copy Sequence")
-        showfastasequencesAction = menu.addAction("Show Selected Sequences (fasta)")
+        showproteinsequencesAction = menu.addAction("Show Protein Sequences (fasta)")
+        shownucleotidesequenceAction = menu.addAction("Show Nucleotide Sequence (fasta)")
         findorthologsAction = menu.addAction("Find Orthologs")
         exportAction = menu.addAction("Export Table")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showfeatureAction:
-            self.app.plot_feature(row)
+            self.plot_features()
         elif action == copysequenceAction:
             self.copy_sequence(row)
-        elif action == showfastasequencesAction:
-            self.show_sequences()
+        elif action == shownucleotidesequenceAction:
+            self.show_nucleotide_sequence()
+        elif action == showproteinsequencesAction:
+            self.show_protein_sequences()
         elif action == findorthologsAction:
             self.find_orthologs(row)
         elif action == exportAction:
             self.exportTable()
+
+    def plot_features(self):
+
+        name = self.name
+        rows = self.getSelectedRows()
+        data = self.model.df.iloc[rows]
+        start = data.start.min()
+        end = data.end.max()
+        recs = self.app.annotations[name]
+
+        s = widgets.SeqFeaturesViewer(self, title=name)
+        s.load_records(recs)
+        s.set_record(recname=data.iloc[0]['id'])
+        s.slider.setValue(start)
+        s.redraw(start, end=end)
+        s.show()
+        return
 
     def copy_sequence(self, row):
 
@@ -484,15 +519,36 @@ class FeaturesTable(DataFrameTable):
         clip.setText(data.translation)
         return
 
-    def show_sequences(self, format='fasta'):
+    def show_nucleotide_sequence(self):
+        """Show sequence for selected region"""
+
+        name = self.name
+        rows = self.getSelectedRows()
+        data = self.model.df.iloc[rows]
+        start = data.start.min()
+        end = data.end.max()
+        chrom = data.id.iloc[0]
+        print (start, end)
+        #reference to annotations
+        recs = SeqIO.to_dict(self.app.annotations[name])
+        rec = recs[chrom]
+        new = rec[start:end]
+        new.id = name
+        new.description = chrom+':'+str(start)+'-'+str(end)
+        self.app.show_info('------------------------------------------------')
+        self.app.show_info(new.format('fasta'))
+        return
+
+    def show_protein_sequences(self, format='fasta'):
         """Show selected protein sequences as fasta"""
 
+        name = self.name
         rows = self.getSelectedRows()
-        #print (rows)
         data = self.model.df.iloc[rows]
         recs = tools.dataframe_to_seqrecords(data, idkey='locus_tag',
                         seqkey='translation', desckey='product', alphabet='protein')
         self.app.show_info('------------------------------------------------')
+        self.app.show_info(name)
         s=''
         for rec in recs:
             s += rec.format(format)
