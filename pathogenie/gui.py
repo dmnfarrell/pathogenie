@@ -74,6 +74,7 @@ class pathogenieApp(QMainWindow):
     def setup_gui(self):
         """Add all GUI elements"""
 
+        self.font = QFont('Arial',12)
         self.m = QSplitter(self.main)
         #mainlayout = QHBoxLayout(self.m)
         left = QWidget(self.m)
@@ -204,6 +205,11 @@ class pathogenieApp(QMainWindow):
         self.settings_menu.addAction('&Add Blast Sequences', self.add_sequences_db)
         self.settings_menu.addAction('&Add Trusted Proteins', self.add_trusted_proteins)
 
+        self.view_menu = QMenu('&View', self)
+        self.menuBar().addMenu(self.view_menu)
+        self.view_menu.addAction('&Zoom In', self.zoom_in)
+        self.view_menu.addAction('&Zoom Out', self.zoom_out)
+
         self.help_menu = QMenu('&Help', self)
         self.menuBar().addMenu(self.help_menu)
         self.help_menu.addAction('&Help', self.online_documentation)
@@ -230,6 +236,7 @@ class pathogenieApp(QMainWindow):
         data['annotations'] = self.annotations
         data['outputdir'] = self.outputdir
         data['trusted'] = self.trusted
+        #data['font'] = self.font
         #data['meta'] = self.saveMeta(table)
         self.projectlabel.setText(filename)
         pickle.dump(data, open(filename,'wb'))
@@ -272,6 +279,7 @@ class pathogenieApp(QMainWindow):
         self.fasta_table.setDataFrame(pd.DataFrame({'name':[]}))
         self.tabs.clear()
         self.annotations = {}
+        self.orthologs = {}
         self.projectlabel.setText('')
         self.outdirLabel.setText(self.outputdir)
         self.trusted = None
@@ -283,7 +291,7 @@ class pathogenieApp(QMainWindow):
         self.clear_project()
         data = pickle.load(open(filename,'rb'))
         inputs = data['inputs']
-        keys = ['sheets','annotations','outputdir','trusted']
+        keys = ['sheets','annotations','outputdir','trusted','font']
         for k in keys:
             if k in data:
                 self.__dict__[k] = data[k]
@@ -355,7 +363,7 @@ class pathogenieApp(QMainWindow):
         if kind == 'results':
             t = tables.ResultsTable(self.tabs,  app=self, dataframe=df)
         elif kind == 'features':
-            t = tables.FeaturesTable(self.tabs, app=self, dataframe=df, name=name)
+            t = tables.FeaturesTable(self.tabs, app=self, dataframe=df, font=self.font, name=name)
         else:
             t = tables.DefaultTable(self.tabs, app=self, dataframe=df)
         i = self.tabs.addTab(t, name)
@@ -593,30 +601,44 @@ class pathogenieApp(QMainWindow):
 
         if self.running == True:
             return
-        #make blast db of all proteins in current annotations
-        self.make_annotations_blastdb()
-        #blast selected protein to it and get best hits
-        self.opts.applyOptions()
-        kwds = self.opts.kwds
-        threads = kwds['threads']
-        ident = kwds['blast_identity']
-        coverage = kwds['blast_coverage']
-        target = os.path.join(app.tempdir, 'proteins.fasta')
-        bl = tools.blast_sequences(target, [sequence], maxseqs=100, evalue=1e-4,
-                               cmd='blastp', show_cmd=True, threads=int(threads))
-        bl = bl[bl.pident>ident]
-        bl['qlength'] = bl.sequence.str.len()
-        bl['coverage'] = bl.length/bl.qlength*100
-        bl = bl[bl.coverage>coverage]
-        bl = bl.drop(columns=['qseq'])
-        #print (bl)
-        #add a table
+        if label in self.orthologs:
+            #if we have previously saved this result load it
+            bl = self.orthologs[label]
+        else:
+            #make blast db of all proteins in current annotations
+            self.make_annotations_blastdb()
+            #blast selected protein to it and get best hits
+            self.opts.applyOptions()
+            kwds = self.opts.kwds
+            threads = kwds['threads']
+            ident = kwds['blast_identity']
+            coverage = kwds['blast_coverage']
+            target = os.path.join(app.tempdir, 'proteins.fasta')
+            bl = tools.blast_sequences(target, [sequence], maxseqs=100, evalue=1e-4,
+                                   cmd='blastp', show_cmd=True, threads=int(threads))
+            bl = bl[bl.pident>ident]
+            bl['qlength'] = bl.sequence.str.len()
+            bl['coverage'] = bl.length/bl.qlength*100
+            bl = bl[bl.coverage>coverage]
+            bl = bl.drop(columns=['qseq'])
+            #print (bl)
+            #add a table
+            self.orthologs[label] = bl
+
         self.add_table(label+'_orthologs',bl)
         #align proteins
         outfile = os.path.join(app.tempdir, 'hits.fasta')
         tools.dataframe_to_fasta(bl, seqkey='sseq', idkey='sseqid', outfile=outfile)
         aln = tools.clustal_alignment(outfile)
         self.show_info(aln.format('clustal'))
+
+        from Bio import Phylo
+        from Bio.Phylo.TreeConstruction import DistanceTreeConstructor,DistanceCalculator
+        #calculator = DistanceCalculator('identity')
+        #constructor = DistanceTreeConstructor(calculator, 'nj')
+        #tree = constructor.build_tree(aln)
+        #self.show_info(Phylo.draw_ascii(tree))
+        #Phylo.draw(tree)
         return
 
     def make_annotations_blastdb(self):
@@ -849,6 +871,18 @@ class pathogenieApp(QMainWindow):
         self.trusted = filename
         name = os.path.basename(filename)
         self.trustedLabel.setText(name)
+        return
+
+    def zoom_in(self):
+        self.fasta_table.zoomIn()
+        s = self.font.pointSize()
+        self.font.setPointSize(s+2)
+        return
+
+    def zoom_out(self):
+        self.fasta_table.zoomOut()
+        s = self.font.pointSize()
+        self.font.setPointSize(s-2)
         return
 
     def _check_snap(self):

@@ -57,8 +57,8 @@ class DataFrameTable(QTableView):
     """
     QTableView with pandas DataFrame as model.
     """
-    def __init__(self, parent=None, dataframe=None, *args):
-        #super(DataFrameTable, self).__init__()
+    def __init__(self, parent=None, dataframe=None, font=None, *args):
+
         QTableView.__init__(self)
         self.clicked.connect(self.showSelection)
         #self.doubleClicked.connect(self.handleDoubleClick)
@@ -69,9 +69,12 @@ class DataFrameTable(QTableView):
         #header.setResizeMode(QHeaderView.ResizeToContents)
         vh = self.verticalHeader()
         vh.setVisible(True)
+        vh.setDefaultSectionSize(28)
         hh = self.horizontalHeader()
         hh.setVisible(True)
         #hh.setStretchLastSection(True)
+        #hh.setSectionResizeMode(QHeaderView.Interactive)
+        hh.setSectionsMovable(True)
         hh.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
         hh.customContextMenuRequested.connect(self.columnHeaderMenu)
         hh.sectionClicked.connect(self.columnClicked)
@@ -83,8 +86,11 @@ class DataFrameTable(QTableView):
         self.setCornerButtonEnabled(True)
         self.setSortingEnabled(True)
 
-        font = QFont("Arial", 12)
-        self.setFont(font)
+        if font != None:
+            self.font = font
+        else:
+            self.font = QFont("Arial", 12)
+        self.setFont(self.font)
         tm = DataFrameModel(dataframe)
         self.setModel(tm)
         self.model = tm
@@ -120,11 +126,25 @@ class DataFrameTable(QTableView):
         return
 
     def zoomIn(self):
+
+        s = self.font.pointSize()
+        self.font.setPointSize(s+2)
+        self.setFont(self.font)
+        vh = self.verticalHeader()
+        h = vh.defaultSectionSize()
+        vh.setDefaultSectionSize(h+2)
         return
 
     def zoomOut(self):
+
+        s = self.font.pointSize()
+        self.font.setPointSize(s-2)
+        self.setFont(self.font)
+        vh = self.verticalHeader()
+        h = vh.defaultSectionSize()
+        vh.setDefaultSectionSize(h-4)
         return
-        
+
     def importFile(self, filename=None, dialog=False, **kwargs):
 
         if dialog is True:
@@ -141,9 +161,6 @@ class DataFrameTable(QTableView):
         buf = io.StringIO()
         self.table.model.df.info(verbose=True,buf=buf,memory_usage=True)
         td = dialogs.TextDialog(self, buf.getvalue(), 'Info')
-        return
-
-    def showasText(self):
         return
 
     def showSelection(self, item):
@@ -287,6 +304,19 @@ class DataFrameTable(QTableView):
             self.model.df.to_csv(filename)
         return
 
+    def addColumn(self):
+        """Add a  column"""
+
+        df = self.model.df
+        name, ok = QInputDialog().getText(self, "Enter Column Name",
+                                             "Name:", QLineEdit.Normal)
+        if ok and name:
+            if name in df.columns:
+                return
+            df[name] = pd.Series()
+            self.refresh()
+        return
+
     def deleteRows(self):
 
         rows = self.getSelectedRows()
@@ -295,7 +325,6 @@ class DataFrameTable(QTableView):
         if not answer:
             return
         idx = self.model.df.index[rows]
-        print (idx)
         self.model.df = self.model.df.drop(idx)
         self.refresh()
         return
@@ -359,8 +388,8 @@ class DataFrameModel(QtCore.QAbstractTableModel):
         i = index.row()
         j = index.column()
         curr = self.df.iloc[i,j]
-        #if curr != value:
-        #    self.df.iloc[i,j] = value
+        print (curr, value)
+        self.df.iloc[i,j] = value
         #self.dataChanged.emit()
         return True
 
@@ -393,9 +422,9 @@ class FilesTable(DataFrameTable):
     """
     QTableView for files view.
     """
-    def __init__(self, parent=None, app=None, dataframe=None, *args):
+    def __init__(self, parent=None, app=None, dataframe=None, font=None, *args):
         #super(DataFrameTable, self).__init__()
-        DataFrameTable.__init__(self)
+        DataFrameTable.__init__(self, parent, dataframe, font)
         self.app = app
         self.setWordWrap(False)
         header = self.horizontalHeader()
@@ -410,7 +439,9 @@ class FilesTable(DataFrameTable):
         #plotSummaryAction = menu.addAction("Plot Summary")
         addAnnotationAction = menu.addAction("Add Annotation From File")
         removeAction = menu.addAction("Remove Selected")
+        addColumnAction = menu.addAction("Add Column")
         exportAction = menu.addAction("Export Table")
+
         action = menu.exec_(self.mapToGlobal(event.pos()))
         # Map the logical row index to a real index for the source model
         #model = self.model
@@ -433,7 +464,18 @@ class FilesTable(DataFrameTable):
             self.deleteRows()
         elif action == exportAction:
             self.exportTable()
+        elif action == addColumnAction:
+            self.addColumn()
         return
+
+    def edit(self, index, trigger, event):
+        """Override edit to disable editing of first two columns"""
+
+        if index.column() < 5:
+            return False
+        else:
+            QTableView.edit(self, index, trigger, event)
+        return True
 
     def refresh(self):
         DataFrameTable.refresh(self)
@@ -474,9 +516,10 @@ class FeaturesTable(DataFrameTable):
     """
     QTableView with pandas DataFrame as model.
     """
-    def __init__(self, parent=None, app=None, dataframe=None, name=None, *args):
+    def __init__(self, parent=None, app=None, dataframe=None,
+                 font=None, name=None, *args):
 
-        DataFrameTable.__init__(self, parent, dataframe)
+        DataFrameTable.__init__(self, parent, dataframe, font)
         self.app = app
         self.name = name
         self.setWordWrap(False)
@@ -571,4 +614,9 @@ class FeaturesTable(DataFrameTable):
         name = data.locus_tag+'_'+data.id
         seq = SeqRecord(Seq(data.translation),id=name)
         self.app.find_orthologs(seq, label=name)
+        return
+
+    def edit(self, index, trigger, event):
+        """Override edit to disable editing"""
+
         return
