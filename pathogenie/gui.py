@@ -565,7 +565,8 @@ class pathogenieApp(QMainWindow):
             progress_callback.emit(row.filename)
             fdf,recs = app.run_annotation(row.filename, threads=int(kwds['threads']),
                                             trusted=self.trusted,
-                                            kingdom=kingdom)
+                                            kingdom=kingdom,
+                                            callback=progress_callback.emit)
             tools.recs_to_genbank(recs, outfile)
             inputs.loc[i,'genbank'] = outfile
             self.annotations[row.label] = recs

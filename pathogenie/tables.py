@@ -119,6 +119,12 @@ class DataFrameTable(QTableView):
     def paste(self):
         return
 
+    def zoomIn(self):
+        return
+
+    def zoomOut(self):
+        return
+        
     def importFile(self, filename=None, dialog=False, **kwargs):
 
         if dialog is True:

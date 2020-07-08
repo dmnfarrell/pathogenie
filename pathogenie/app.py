@@ -354,6 +354,7 @@ def add_protein_db(filename):
 
 def run_annotation(infile, prefix=None, ident=70, threads=4,
                    kingdom='bacteria', trusted=None, trusted_format='uniprot',
+                   callback=None,
                    **kwargs):
     """
     Annotate nucelotide sequences (usually a draft assembly with contigs)
