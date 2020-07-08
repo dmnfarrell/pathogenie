@@ -61,7 +61,7 @@ class DataFrameTable(QTableView):
         #super(DataFrameTable, self).__init__()
         QTableView.__init__(self)
         self.clicked.connect(self.showSelection)
-        self.doubleClicked.connect(self.handleDoubleClick)
+        #self.doubleClicked.connect(self.handleDoubleClick)
         self.setSelectionBehavior(QTableView.SelectRows)
         #self.setSelectionBehavior(QTableView.SelectColumns)
         #self.horizontalHeader = ColumnHeader()
@@ -173,7 +173,8 @@ class DataFrameTable(QTableView):
     def handleDoubleClick(self, item):
 
         cellContent = item.data()
-        print (item)
+        if item.column() != 0:
+            return
         return
 
     def columnClicked(self, col):
@@ -240,10 +241,8 @@ class DataFrameTable(QTableView):
         position = event.globalPos()
         row = vheader.logicalIndexAt(vheader.mapFromGlobal(position))
         column = hheader.logicalIndexAt(hheader.mapFromGlobal(position))
-
         if row == -1:
             return
-
         # Show a context menu for empty space at bottom of table...
         self.menu = QMenu(self)
         self.addActions(event, row)
@@ -282,6 +281,19 @@ class DataFrameTable(QTableView):
             self.model.df.to_csv(filename)
         return
 
+    def deleteRows(self):
+
+        rows = self.getSelectedRows()
+        answer = QMessageBox.question(self, 'Delete Rows?',
+                             'Are you sure?', QMessageBox.Yes, QMessageBox.No)
+        if not answer:
+            return
+        idx = self.model.df.index[rows]
+        print (idx)
+        self.model.df = self.model.df.drop(idx)
+        self.refresh()
+        return
+
 class DataFrameModel(QtCore.QAbstractTableModel):
     def __init__(self, dataframe=None, *args):
         super(DataFrameModel, self).__init__()
@@ -304,15 +316,16 @@ class DataFrameModel(QtCore.QAbstractTableModel):
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
 
+        i = index.row()
+        j = index.column()
         if role == QtCore.Qt.DisplayRole:
-            i = index.row()
-            j = index.column()
             value = self.df.iloc[i, j]
             if type(value) != str and np.isnan(value):
                 return ''
             else:
                 return '{0}'.format(value)
-
+        elif (role == QtCore.Qt.EditRole):
+            return self.df.iloc[i, j]
         elif role == QtCore.Qt.BackgroundRole:
             return QColor(self.bg)
 
@@ -324,9 +337,6 @@ class DataFrameModel(QtCore.QAbstractTableModel):
             return self.df.index[col]
         return None
 
-    def flags(self, index):
-        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEditable
-
     def sort(self, Ncol, order):
         """Sort table by given column number """
 
@@ -337,7 +347,7 @@ class DataFrameModel(QtCore.QAbstractTableModel):
         return
 
     def setData(self, index, value, role=QtCore.Qt.EditRole):
-        """Set data"""
+        """Set data upon edits"""
 
         #print (index)
         i = index.row()
@@ -383,7 +393,6 @@ class FilesTable(DataFrameTable):
         self.app = app
         self.setWordWrap(False)
         header = self.horizontalHeader()
-        #header.setResizeMode(QHeaderView.ResizeToContents)
 
     def addActions(self, event, row):
 
@@ -415,7 +424,7 @@ class FilesTable(DataFrameTable):
         elif action == showGFFAction:
             self.app.show_gff_file()
         elif action == removeAction:
-            self.deleteRows(row)
+            self.deleteRows()
         elif action == exportAction:
             self.exportTable()
         return
@@ -427,12 +436,6 @@ class FilesTable(DataFrameTable):
         self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeToContents)
 
-    def deleteRows(self, rows):
-
-        idx = self.model.df.index[rows]
-        self.model.df = self.model.df.drop(idx)
-        self.refresh()
-        return
 
 class ResultsTable(DataFrameTable):
     """

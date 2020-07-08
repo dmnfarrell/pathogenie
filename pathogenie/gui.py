@@ -240,11 +240,11 @@ class pathogenieApp(QMainWindow):
 
         options = QFileDialog.Options()
         filename, _ = QFileDialog.getSaveFileName(self,"Save Project",
-                                                  "","Project files (*.pygf);;All files (*.*)",
+                                                  "","Project files (*.pathogenie);;All files (*.*)",
                                                   options=options)
         if filename:
-            if not os.path.splitext(filename)[1] == '.pygf':
-                filename += '.pygf'
+            if not os.path.splitext(filename)[1] == '.pathogenie':
+                filename += '.pathogenie'
             self.proj_file = filename
             self.save_project()
         return
@@ -305,7 +305,7 @@ class pathogenieApp(QMainWindow):
         """Load project"""
 
         filename, _ = QFileDialog.getOpenFileName(self, 'Open Project', './',
-                                        filter="Project Files(*.pygf);;All Files(*.*)")
+                                        filter="Project Files(*.pathogenie);;All Files(*.*)")
         if not filename:
             return
         if not os.path.exists(filename):
@@ -1001,7 +1001,7 @@ def main():
     parser.add_argument("-f", "--fasta", dest="filenames",default=[],
                         help="input fasta file", metavar="FILE")
     parser.add_argument("-p", "--proj", dest="project",default=None,
-                        help="load .pygf project file", metavar="FILE")
+                        help="load .pathogenie project file", metavar="FILE")
     args = vars(parser.parse_args())
 
     app = QApplication(sys.argv)
