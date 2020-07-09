@@ -74,6 +74,7 @@ class pathogenieApp(QMainWindow):
     def setup_gui(self):
         """Add all GUI elements"""
 
+        self.fontsize = 12
         self.font = QFont('Arial',12)
         self.m = QSplitter(self.main)
         #mainlayout = QHBoxLayout(self.m)
@@ -83,9 +84,10 @@ class pathogenieApp(QMainWindow):
         dialog = self.opts.showDialog(left, wrap=1, section_wrap=1)
         left.setFixedWidth(250)
         center = QWidget(self.m)#, orientation=QtCore.Qt.Vertical)
-        #mainlayout.addWidget(center)
+
         l = QVBoxLayout(center)
-        self.fasta_table = tables.FilesTable(center, app=self, dataframe=pd.DataFrame())
+        self.fasta_table = tables.FilesTable(center, app=self, dataframe=pd.DataFrame(),
+                                    fontsize=self.fontsize)
         l.addWidget(self.fasta_table)
         self.fasta_table.setColumnWidth(0,200)
         self.fasta_table.setColumnWidth(1,400)
@@ -236,7 +238,7 @@ class pathogenieApp(QMainWindow):
         data['annotations'] = self.annotations
         data['outputdir'] = self.outputdir
         data['trusted'] = self.trusted
-        #data['font'] = self.font
+        data['fontsize'] = self.fontsize
         #data['meta'] = self.saveMeta(table)
         self.projectlabel.setText(filename)
         pickle.dump(data, open(filename,'wb'))
@@ -283,6 +285,7 @@ class pathogenieApp(QMainWindow):
         self.projectlabel.setText('')
         self.outdirLabel.setText(self.outputdir)
         self.trusted = None
+        self.fontsize = 12
         return
 
     def load_project(self, filename=None):
@@ -291,7 +294,7 @@ class pathogenieApp(QMainWindow):
         self.clear_project()
         data = pickle.load(open(filename,'rb'))
         inputs = data['inputs']
-        keys = ['sheets','annotations','outputdir','trusted','font']
+        keys = ['sheets','annotations','outputdir','trusted','fontsize']
         for k in keys:
             if k in data:
                 self.__dict__[k] = data[k]
@@ -307,6 +310,7 @@ class pathogenieApp(QMainWindow):
         self.projectlabel.setText(self.proj_file)
         self.outdirLabel.setText(self.outputdir)
         self.trustedLabel.setText(os.path.basename(self.trusted))
+        self.fasta_table.setFont(QFont('Arial',self.fontsize))
         return
 
     def load_project_dialog(self):
@@ -363,7 +367,8 @@ class pathogenieApp(QMainWindow):
         if kind == 'results':
             t = tables.ResultsTable(self.tabs,  app=self, dataframe=df)
         elif kind == 'features':
-            t = tables.FeaturesTable(self.tabs, app=self, dataframe=df, font=self.font, name=name)
+            t = tables.FeaturesTable(self.tabs, app=self, dataframe=df,
+                                     fontsize=self.fontsize, name=name)
         else:
             t = tables.DefaultTable(self.tabs, app=self, dataframe=df)
         i = self.tabs.addTab(t, name)
@@ -874,15 +879,23 @@ class pathogenieApp(QMainWindow):
         return
 
     def zoom_in(self):
+
         self.fasta_table.zoomIn()
-        s = self.font.pointSize()
-        self.font.setPointSize(s+2)
+        self.fontsize+=1
+        #self.font.setPointSize(s+2)
+        for i in range(self.tabs.count()):
+            table = self.tabs.widget(i)
+            table.zoomIn()
         return
 
     def zoom_out(self):
+
         self.fasta_table.zoomOut()
-        s = self.font.pointSize()
-        self.font.setPointSize(s-2)
+        self.fontsize-=1
+        #self.font.setPointSize(s-2)
+        for i in range(self.tabs.count()):
+            table = self.tabs.widget(i)
+            table.zoomOut()
         return
 
     def _check_snap(self):

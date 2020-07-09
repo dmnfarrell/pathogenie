@@ -5,12 +5,16 @@ CHANGES
 0.3.0
 -----
 
-* renamed again to pathogenie
+* renamed to pathogenie
+* updates for table functionality
+* zoom tables
+* edit cells, add columns for main table
+* find orthologs from annotations
+* use trusted proteins
 
 0.2.0
 ------
 
-* renamed to pygenefinder
 * converted gui to use pyside2
 * added project files
 * prokka type genome annotation with blast/prodigal/hmmer and aragorn
