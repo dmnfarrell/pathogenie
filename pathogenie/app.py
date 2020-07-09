@@ -316,6 +316,8 @@ def hmmer(infile, threads=4, hmm_file=None):
     #get coords from prodigal fasta heading if available
     df[['start','end','strand']] = df.description.apply(get_prodigal_coords,1)
     df['contig'] = df['name'].apply(get_contig)
+    #remove temp file
+    os.remove(outfile)
     return df
 
 def aragorn(infile):
@@ -389,6 +391,8 @@ def run_annotation(infile, prefix=None, ident=70, threads=4,
     df['sequence'] = df.sequence.str.rstrip('*')
     #get target seqs
     seqs = list(SeqIO.parse(resfile,'fasta'))
+    #remove temp prodigal file
+    os.remove(resfile)
     #remove trailing asterisks
     #seqs = [s.rstrip("*") for s in seqs]
     #read input file nucleotide seqs

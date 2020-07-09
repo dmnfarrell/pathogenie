@@ -238,6 +238,7 @@ class DataFrameTable(QTableView):
         model = self.model
         menu = QMenu(self)
         setIndexAction = menu.addAction("Set as Index")
+        #deleteColumnAction = menu.addAction("Delete Column")
         #sortAction = menu.addAction("Sort By")
         action = menu.exec_(self.mapToGlobal(pos))
         if action == setIndexAction:
@@ -357,7 +358,11 @@ class DataFrameModel(QtCore.QAbstractTableModel):
             else:
                 return '{0}'.format(value)
         elif (role == QtCore.Qt.EditRole):
-            return self.df.iloc[i, j]
+            value = self.df.iloc[i, j]
+            if type(value) != str and np.isnan(value):
+                return ''
+            else:
+                return value
         elif role == QtCore.Qt.BackgroundRole:
             return QColor(self.bg)
 
