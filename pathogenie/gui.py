@@ -600,9 +600,9 @@ class pathogenieApp(QMainWindow):
         self.running = False
         return
 
-    def find_orthologs(self, sequence, label=''):
+    def find_orthologs(self, rec, label=''):
         """Find orthologs of annotated proteins from feature tables
-        across all annotations """
+           across all annotations given an input record"""
 
         if self.running == True:
             return
@@ -619,13 +619,13 @@ class pathogenieApp(QMainWindow):
             ident = kwds['blast_identity']
             coverage = kwds['blast_coverage']
             target = os.path.join(app.tempdir, 'proteins.fasta')
-            bl = tools.blast_sequences(target, [sequence], maxseqs=100, evalue=1e-4,
+            bl = tools.blast_sequences(target, [rec], maxseqs=100, evalue=1e-4,
                                    cmd='blastp', show_cmd=True, threads=int(threads))
             bl = bl[bl.pident>ident]
             bl['qlength'] = bl.sequence.str.len()
             bl['coverage'] = bl.length/bl.qlength*100
             bl = bl[bl.coverage>coverage]
-            bl = bl.drop(columns=['qseq'])
+            bl = bl.drop(columns=['qseqid','qseq'])
             #print (bl)
             #add a table
             self.orthologs[label] = bl
@@ -635,15 +635,12 @@ class pathogenieApp(QMainWindow):
         outfile = os.path.join(app.tempdir, 'hits.fasta')
         tools.dataframe_to_fasta(bl, seqkey='sseq', idkey='sseqid', outfile=outfile)
         aln = tools.clustal_alignment(outfile)
-        self.show_info(aln.format('clustal'))
-
-        from Bio import Phylo
-        from Bio.Phylo.TreeConstruction import DistanceTreeConstructor,DistanceCalculator
-        #calculator = DistanceCalculator('identity')
-        #constructor = DistanceTreeConstructor(calculator, 'nj')
-        #tree = constructor.build_tree(aln)
-        #self.show_info(Phylo.draw_ascii(tree))
-        #Phylo.draw(tree)
+        #self.show_info('orthologs for %s' %rec.description)
+        #self.show_info(aln.format('clustal'))
+        #open sequence viewer
+        fw = widgets.FastaViewer(self, title=rec.description)
+        recs = list(SeqIO.parse(outfile,'fasta'))
+        fw.load_records(recs)
         return
 
     def make_annotations_blastdb(self):
@@ -654,12 +651,14 @@ class pathogenieApp(QMainWindow):
         outfile = os.path.join(app.tempdir, 'proteins.fasta')
         result = []
         for name in self.annotations:
-            print (name)
+            #print (name)
             recs = self.annotations[name]
             df = tools.records_to_dataframe(recs)
+            df['sample'] = name
             result.append(df)
         featsdf = pd.concat(result)
-        tools.dataframe_to_fasta(featsdf, descrkey='product', outfile=outfile)
+        #print (featsdf)
+        tools.dataframe_to_fasta(featsdf, idkey='sample',descrkey='sample', outfile=outfile)
         tools.make_blast_database(outfile, dbtype='prot')
         return
 
@@ -759,6 +758,8 @@ class pathogenieApp(QMainWindow):
         return
 
     def show_protein_sequences(self, row):
+        """Show protien sequences across all samples in blast result"""
+
         inputs = self.fasta_table.getDataFrame()
         files = inputs.filename
         index = self.tabs.currentIndex()
@@ -880,22 +881,20 @@ class pathogenieApp(QMainWindow):
 
     def zoom_in(self):
 
-        self.fasta_table.zoomIn()
         self.fontsize+=1
-        #self.font.setPointSize(s+2)
+        self.fasta_table.zoomIn(self.fontsize)
         for i in range(self.tabs.count()):
             table = self.tabs.widget(i)
-            table.zoomIn()
+            table.zoomIn(self.fontsize)
         return
 
     def zoom_out(self):
 
-        self.fasta_table.zoomOut()
         self.fontsize-=1
-        #self.font.setPointSize(s-2)
+        self.fasta_table.zoomOut(self.fontsize)
         for i in range(self.tabs.count()):
             table = self.tabs.widget(i)
-            table.zoomOut()
+            table.zoomOut(self.fontsize)
         return
 
     def _check_snap(self):

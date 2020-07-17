@@ -29,6 +29,7 @@ import sys, os, io
 import numpy as np
 import pandas as pd
 import string
+from Bio import SeqIO
 
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
@@ -317,7 +318,6 @@ class FileViewer(QDialog):
     """Sequence records features viewer"""
     def __init__(self, parent=None, filename=None):
 
-        #QDialog.__init__(self)
         super(FileViewer, self).__init__(parent)
         self.ed = ed = QPlainTextEdit(self, readOnly=True)
         #ed.setStyleSheet("font-family: monospace; font-size: 14px;")
@@ -351,6 +351,117 @@ class FileViewer(QDialog):
         recnames = list(recs.keys())
         #self.recselect.addItems(recnames)
         #self.recselect.setCurrentIndex(0)
+        self.scroll_top()
+        return
+
+    def scroll_top(self):
+        vScrollBar = self.ed.verticalScrollBar()
+        vScrollBar.triggerAction(QScrollBar.SliderToMinimum)
+        return
+
+
+class FastaViewer(QDialog):
+    def __init__(self, parent=None, filename=None, title='sequences'):
+        super(FastaViewer, self).__init__(parent)
+        self.setWindowTitle(title)
+        self.setGeometry(QtCore.QRect(200, 200, 1000, 600))
+        self.setMinimumHeight(150)
+        self.recs = None
+        self.aln = None
+        self.add_widgets()
+        self.show()
+        return
+
+    def add_widgets(self):
+        """Add widgets"""
+
+        self.ed = ed = QPlainTextEdit(self, readOnly=True)
+        self.ed.setLineWrapMode(QPlainTextEdit.NoWrap)
+        font = QFont("Monospace")
+        font.setPointSize(10)
+        font.setStyleHint(QFont.TypeWriter)
+        self.ed.setFont(font)
+        l = QVBoxLayout(self)
+        self.setLayout(l)
+        l.addWidget(ed)
+        w = QWidget()
+        l.addWidget(w)
+        l2 = QHBoxLayout(w)
+        btn = QPushButton('Show Fasta')
+        btn.clicked.connect(self.show_fasta)
+        l2.addWidget(btn)
+        btn = QPushButton('Align')
+        btn.clicked.connect(self.show_alignment)
+        l2.addWidget(btn)
+        btn = QPushButton('Save Alignment')
+        btn.clicked.connect(self.save_alignment)
+        l2.addWidget(btn)
+        return
+
+    def scroll_top(self):
+        vScrollBar = self.ed.verticalScrollBar()
+        vScrollBar.triggerAction(QScrollBar.SliderToMinimum)
+        return
+
+    def load_records(self, recs):
+
+        self.recs = recs
+        self.show_fasta()
+        return
+
+    def show_fasta(self):
+
+        recs = self.recs
+        if recs == None:
+            return
+        self.ed.clear()
+        for rec in recs:
+            s = rec.format('fasta')
+            self.ed.appendPlainText(s)
+        self.scroll_top()
+        return
+
+    def align(self):
+
+        if self.aln == None:
+            outfile = 'temp.fa'
+            SeqIO.write(self.recs, outfile, 'fasta')
+            self.aln = tools.clustal_alignment(outfile)
+            #self.show_tree()
+        return
+
+    def show_tree(self):
+
+        from Bio import Phylo
+        from Bio.Phylo.TreeConstruction import DistanceTreeConstructor,DistanceCalculator
+        calculator = DistanceCalculator('identity')
+        constructor = DistanceTreeConstructor(calculator, 'nj')
+        tree = constructor.build_tree(self.aln)
+        #self.show_info(Phylo.draw_ascii(tree))
+        Phylo.draw(tree)
+        return
+
+    def show_alignment(self):
+
+        self.align()
+        aln = self.aln
+        self.ed.clear()
+        #self.ed.appendPlainText(self.aln.format('clustal'))
+        self.scroll_top()
+        self.ed.appendPlainText("Alignment length %i" % aln.get_alignment_length())
+        for record in aln:
+            self.ed.appendPlainText(record.id + " " + str(record.seq))
+
+        return
+
+    def save_alignment(self):
+
+        filters = "clustal files (*.aln);;All files (*.*)"
+        filename, _ = QFileDialog.getSaveFileName(self,"Save Alignment",
+                                                  "",filters)
+        if not filename:
+            return
+        SeqIO.write(self.aln,filename,format='clustal')
         return
 
 class SeqFeaturesViewer(QDialog):

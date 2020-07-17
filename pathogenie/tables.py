@@ -87,6 +87,7 @@ class DataFrameTable(QTableView):
         self.setSortingEnabled(True)
 
         self.font = QFont("Arial", fontsize)
+        #print (fontsize)
         self.setFont(self.font)
         tm = DataFrameModel(dataframe)
         self.setModel(tm)
@@ -122,20 +123,26 @@ class DataFrameTable(QTableView):
     def paste(self):
         return
 
-    def zoomIn(self):
+    def zoomIn(self, fontsize=None):
 
-        s = self.font.pointSize()
-        self.font.setPointSize(s+1)
+        if fontsize == None:
+            s = self.font.pointSize()+1
+        else:
+            s = fontsize
+        self.font.setPointSize(s)
         self.setFont(self.font)
         vh = self.verticalHeader()
         h = vh.defaultSectionSize()
         vh.setDefaultSectionSize(h+2)
         return
 
-    def zoomOut(self):
+    def zoomOut(self, fontsize=None):
 
-        s = self.font.pointSize()
-        self.font.setPointSize(s-1)
+        if fontsize == None:
+            s = self.font.pointSize()-1
+        else:
+            s = fontsize
+        self.font.setPointSize(s)
         self.setFont(self.font)
         vh = self.verticalHeader()
         h = vh.defaultSectionSize()
@@ -525,6 +532,7 @@ class FeaturesTable(DataFrameTable):
         self.app = app
         self.name = name
         self.setWordWrap(False)
+        return
 
     def addActions(self, event, row):
 
@@ -614,7 +622,7 @@ class FeaturesTable(DataFrameTable):
 
         data = self.model.df.iloc[row]
         name = data.locus_tag+'_'+data.id
-        seq = SeqRecord(Seq(data.translation),id=name)
+        seq = SeqRecord(Seq(data.translation),id=name,description=data['product'])
         self.app.find_orthologs(seq, label=name)
         return
 
