@@ -309,7 +309,8 @@ class pathogenieApp(QMainWindow):
         self.proj_file = filename
         self.projectlabel.setText(self.proj_file)
         self.outdirLabel.setText(self.outputdir)
-        self.trustedLabel.setText(os.path.basename(self.trusted))
+        if self.trusted != None:
+            self.trustedLabel.setText(os.path.basename(self.trusted))
         self.fasta_table.setFont(QFont('Arial',self.fontsize))
         return
 
@@ -638,7 +639,7 @@ class pathogenieApp(QMainWindow):
         #self.show_info('orthologs for %s' %rec.description)
         #self.show_info(aln.format('clustal'))
         #open sequence viewer
-        fw = widgets.FastaViewer(self, title=rec.description)
+        fw = widgets.SequencesViewer(self, title=rec.description)
         recs = list(SeqIO.parse(outfile,'fasta'))
         fw.load_records(recs)
         return

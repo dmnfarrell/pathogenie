@@ -634,24 +634,29 @@ def ml_tree(aln, name):
     mtree = Phylo.read('%s.phy_phyml_tree.txt' %name,'newick')
     return mtree
 
-def show_alignment(aln, diff=False, offset=0):
+def show_alignment(aln, chunks=0, diff=False, offset=0):
     """
     Show a sequence alignment
         Args:
             aln: alignment
+            chunks: length of chunks to break lines over, 0 means full length
             diff: whether to show differences
     """
 
     ref = aln[0]
     l = len(aln[0])
     n=60
-    chunks = [(i,i+n) for i in range(0, l, n)]
+    s=[]
+    if chunks > 0:
+        chunks = [(i,i+n) for i in range(0, l, n)]
+    else:
+        chunks = [(0,l)]
     for c in chunks:
         start,end = c
-        lbls = np.arange(start,end,10)-offset
-        print (('%-21s' %'name'),''.join([('%-10s' %i) for i in lbls]))
-        print (('%21s' %ref.id[:20]), ref.seq[start:end])
-
+        lbls = np.arange(start+1,end+1,10)-offset
+        head = ''.join([('%-10s' %i) for i in lbls])
+        s.append( '%-21s %s' %('',head) )
+        s.append( '%21s %s' %(ref.id[:20], ref.seq[start:end]) )
         if diff == True:
             for a in aln[1:]:
                 diff=''
@@ -661,12 +666,13 @@ def show_alignment(aln, diff=False, offset=0):
                     else:
                         diff+='-'
                 name = a.id[:20]
-                print (('%21s' %name), diff[start:end])
+                s.append( '%21s %s' %(name, diff[start:end]) )
         else:
             for a in aln[1:]:
                 name = a.id[:20]
-                print (('%21s' %name), a.seq[start:end])
-    return
+                s.append( '%21s %s' %(name, a.seq[start:end]) )
+    s = '\n'.join(s)
+    return s
 
 def read_hmmer3(infile):
     """read hmmer3 tab file and return dataframe"""

@@ -314,6 +314,60 @@ class DynamicDialog(QDialog):
         kwds = self.opts.kwds
         return kwds
 
+class Editor(QTextEdit):
+    def __init__(self, parent=None, **kwargs):
+        super(Editor, self).__init__(parent, **kwargs)
+
+    def zoom(self, delta):
+        if delta < 0:
+            self.zoomOut(1)
+        elif delta > 0:
+            self.zoomIn(1)
+
+    def contextMenuEvent(self, event):
+
+        menu = QMenu(self)
+        copyAction = menu.addAction("Copy")
+        clearAction = menu.addAction("Clear")
+        zoominAction = menu.addAction("Zoom In")
+        zoomoutAction = menu.addAction("Zoom Out")
+        action = menu.exec_(self.mapToGlobal(event.pos()))
+        if action == copyAction:
+            self.copy()
+        elif action == clearAction:
+            self.clear()
+        elif action == zoominAction:
+            self.zoom(1)
+        elif action == zoomoutAction:
+            self.zoom(-1)
+
+class PlainTextEditor(QPlainTextEdit):
+    def __init__(self, parent=None, **kwargs):
+        super(PlainTextEditor, self).__init__(parent, **kwargs)
+
+    def zoom(self, delta):
+        if delta < 0:
+            self.zoomOut(1)
+        elif delta > 0:
+            self.zoomIn(1)
+
+    def contextMenuEvent(self, event):
+
+        menu = QMenu(self)
+        copyAction = menu.addAction("Copy")
+        clearAction = menu.addAction("Clear")
+        zoominAction = menu.addAction("Zoom In")
+        zoomoutAction = menu.addAction("Zoom Out")
+        action = menu.exec_(self.mapToGlobal(event.pos()))
+        if action == copyAction:
+            self.copy()
+        elif action == clearAction:
+            self.clear()
+        elif action == zoominAction:
+            self.zoom(1)
+        elif action == zoomoutAction:
+            self.zoom(-1)
+
 class FileViewer(QDialog):
     """Sequence records features viewer"""
     def __init__(self, parent=None, filename=None):
@@ -359,10 +413,11 @@ class FileViewer(QDialog):
         vScrollBar.triggerAction(QScrollBar.SliderToMinimum)
         return
 
+class SequencesViewer(QDialog):
+    """Viewer for sequence alignments"""
 
-class FastaViewer(QDialog):
     def __init__(self, parent=None, filename=None, title='sequences'):
-        super(FastaViewer, self).__init__(parent)
+        super(SequencesViewer, self).__init__(parent)
         self.setWindowTitle(title)
         self.setGeometry(QtCore.QRect(200, 200, 1000, 600))
         self.setMinimumHeight(150)
@@ -375,7 +430,7 @@ class FastaViewer(QDialog):
     def add_widgets(self):
         """Add widgets"""
 
-        self.ed = ed = QPlainTextEdit(self, readOnly=True)
+        self.ed = ed = PlainTextEditor(self, readOnly=True)
         self.ed.setLineWrapMode(QPlainTextEdit.NoWrap)
         font = QFont("Monospace")
         font.setPointSize(10)
@@ -395,6 +450,9 @@ class FastaViewer(QDialog):
         l2.addWidget(btn)
         btn = QPushButton('Save Alignment')
         btn.clicked.connect(self.save_alignment)
+        l2.addWidget(btn)
+        btn = QPushButton('Show Tree')
+        btn.clicked.connect(self.show_tree)
         l2.addWidget(btn)
         return
 
@@ -427,11 +485,11 @@ class FastaViewer(QDialog):
             outfile = 'temp.fa'
             SeqIO.write(self.recs, outfile, 'fasta')
             self.aln = tools.clustal_alignment(outfile)
-            #self.show_tree()
         return
 
     def show_tree(self):
 
+        self.align()
         from Bio import Phylo
         from Bio.Phylo.TreeConstruction import DistanceTreeConstructor,DistanceCalculator
         calculator = DistanceCalculator('identity')
@@ -446,11 +504,19 @@ class FastaViewer(QDialog):
         self.align()
         aln = self.aln
         self.ed.clear()
-        #self.ed.appendPlainText(self.aln.format('clustal'))
         self.scroll_top()
-        self.ed.appendPlainText("Alignment length %i" % aln.get_alignment_length())
-        for record in aln:
-            self.ed.appendPlainText(record.id + " " + str(record.seq))
+        #self.ed.appendPlainText("Alignment length %i" % aln.get_alignment_length())
+        #for record in aln:
+        #    self.ed.appendPlainText(record.id + " " + str(record.seq))
+        self.ed.appendPlainText(tools.show_alignment(aln))
+
+        format = QtGui.QTextCharFormat()
+        format.setBackground(QtGui.QBrush(QtGui.QColor("red")))
+        cursor = self.ed.textCursor()
+        for index in range(len(aln)):
+            cursor.setPosition(index)
+            cursor.movePosition(QtGui.QTextCursor.NextCharacter)
+            cursor.setCharFormat(format)
 
         return
 
@@ -713,30 +779,3 @@ class PlotViewer(QDialog):
         self.fig = fig
         #self.ax = ax
         return
-
-class Editor(QTextEdit):
-    def __init__(self, parent=None, **kwargs):
-        super(Editor, self).__init__(parent, **kwargs)
-
-    def zoom(self, delta):
-        if delta < 0:
-            self.zoomOut(1)
-        elif delta > 0:
-            self.zoomIn(1)
-
-    def contextMenuEvent(self, event):
-
-        menu = QMenu(self)
-        copyAction = menu.addAction("Copy")
-        clearAction = menu.addAction("Clear")
-        zoominAction = menu.addAction("Zoom In")
-        zoomoutAction = menu.addAction("Zoom Out")
-        action = menu.exec_(self.mapToGlobal(event.pos()))
-        if action == copyAction:
-            self.copy()
-        elif action == clearAction:
-            self.clear()
-        elif action == zoominAction:
-            self.zoom(1)
-        elif action == zoomoutAction:
-            self.zoom(-1)
