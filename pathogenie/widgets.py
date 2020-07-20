@@ -344,6 +344,11 @@ class Editor(QTextEdit):
 class PlainTextEditor(QPlainTextEdit):
     def __init__(self, parent=None, **kwargs):
         super(PlainTextEditor, self).__init__(parent, **kwargs)
+        font = QFont("Monospace")
+        font.setPointSize(10)
+        font.setStyleHint(QFont.TypeWriter)
+        self.setFont(font)
+        return
 
     def zoom(self, delta):
         if delta < 0:
@@ -430,30 +435,52 @@ class SequencesViewer(QDialog):
     def add_widgets(self):
         """Add widgets"""
 
+        l = QHBoxLayout(self)
+        self.setLayout(l)
+        self.tabs = QTabWidget(self)
+        l.addWidget(self.tabs)
+
         self.ed = ed = PlainTextEditor(self, readOnly=True)
         self.ed.setLineWrapMode(QPlainTextEdit.NoWrap)
-        font = QFont("Monospace")
-        font.setPointSize(10)
-        font.setStyleHint(QFont.TypeWriter)
-        self.ed.setFont(font)
-        l = QVBoxLayout(self)
-        self.setLayout(l)
-        l.addWidget(ed)
-        w = QWidget()
-        l.addWidget(w)
-        l2 = QHBoxLayout(w)
-        btn = QPushButton('Show Fasta')
-        btn.clicked.connect(self.show_fasta)
-        l2.addWidget(btn)
-        btn = QPushButton('Align')
-        btn.clicked.connect(self.show_alignment)
-        l2.addWidget(btn)
+        self.tabs.addTab(self.ed, 'fasta')
+
+        self.alnview = PlainTextEditor(self, readOnly=True)
+        self.alnview.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.tabs.addTab(self.alnview, 'alignment')
+
+        sidebar = QWidget()
+        sidebar.setFixedWidth(180)
+        l.addWidget(sidebar)
+        l2 = QVBoxLayout(sidebar)
+        l2.setSpacing(5)
+        l2.setAlignment(QtCore.Qt.AlignTop)
         btn = QPushButton('Save Alignment')
         btn.clicked.connect(self.save_alignment)
         l2.addWidget(btn)
         btn = QPushButton('Show Tree')
         btn.clicked.connect(self.show_tree)
         l2.addWidget(btn)
+        btn = QPushButton()
+        btn.clicked.connect(self.zoom_out)
+        iconw = QIcon.fromTheme('zoom-out')
+        btn.setIcon(QIcon(iconw))
+        l2.addWidget(btn)
+        btn = QPushButton()
+        btn.clicked.connect(self.zoom_in)
+        iconw = QIcon.fromTheme('zoom-in')
+        btn.setIcon(QIcon(iconw))
+        l2.addWidget(btn)
+        lbl = QLabel('Format')
+        l2.addWidget(lbl)
+        w = QComboBox()
+        w.addItems(['no color','color by residue'])
+        w.setCurrentIndex(1)
+        w.activated.connect(self.show_alignment)
+        l2.addWidget(w)
+        #lbl = QLabel('Width')
+        #l2.addWidget(lbl)
+        #w = QLineEdit()
+        #l2.addWidget(w)
         return
 
     def scroll_top(self):
@@ -461,10 +488,21 @@ class SequencesViewer(QDialog):
         vScrollBar.triggerAction(QScrollBar.SliderToMinimum)
         return
 
+    def zoom_out(self):
+        self.ed.zoom(-1)
+        self.alnview.zoom(-1)
+        return
+
+    def zoom_in(self):
+        self.ed.zoom(1)
+        self.alnview.zoom(1)
+        return
+
     def load_records(self, recs):
 
         self.recs = recs
         self.show_fasta()
+        self.show_alignment()
         return
 
     def show_fasta(self):
@@ -490,34 +528,68 @@ class SequencesViewer(QDialog):
     def show_tree(self):
 
         self.align()
+        import pylab as plt
         from Bio import Phylo
         from Bio.Phylo.TreeConstruction import DistanceTreeConstructor,DistanceCalculator
         calculator = DistanceCalculator('identity')
         constructor = DistanceTreeConstructor(calculator, 'nj')
         tree = constructor.build_tree(self.aln)
         #self.show_info(Phylo.draw_ascii(tree))
+        #plt.gca()(frameon=False)
         Phylo.draw(tree)
         return
 
     def show_alignment(self):
+        self.draw_colored_alignment(self.alnview)
+        return
 
+    def draw_colored_alignment(self, w):
+        """Show alignment with colored columns"""
+
+        chunks=0
+        offset=0
+        diff=False
         self.align()
         aln = self.aln
-        self.ed.clear()
+        w.clear()
         self.scroll_top()
-        #self.ed.appendPlainText("Alignment length %i" % aln.get_alignment_length())
-        #for record in aln:
-        #    self.ed.appendPlainText(record.id + " " + str(record.seq))
-        self.ed.appendPlainText(tools.show_alignment(aln))
 
+        colors = tools.get_protein_colors()
         format = QtGui.QTextCharFormat()
-        format.setBackground(QtGui.QBrush(QtGui.QColor("red")))
-        cursor = self.ed.textCursor()
-        for index in range(len(aln)):
-            cursor.setPosition(index)
-            cursor.movePosition(QtGui.QTextCursor.NextCharacter)
-            cursor.setCharFormat(format)
+        cursor = w.textCursor()
 
+        ref = aln[0]
+        l = len(aln[0])
+        n=60
+        s=[]
+        if chunks > 0:
+            chunks = [(i,i+n) for i in range(0, l, n)]
+        else:
+            chunks = [(0,l)]
+        for c in chunks:
+            start,end = c
+            lbls = np.arange(start+1,end+1,10)-offset
+            head = ''.join([('%-10s' %i) for i in lbls])
+            s = '%-25s %s' %('',head)
+            w.appendPlainText(s)
+            w.insertPlainText('\n')
+            for a in aln:
+                name = a.id[:20]
+                seq = a.seq[start:end]
+                s = '%25s ' %(name)
+                w.insertPlainText(s)
+                #s = '<span style="background-color:white;">%25s</span>' %name
+                #cursor.insertHtml(s)
+                line = ''
+                for aa in seq:
+                    c = colors[aa]
+                    #format.setBackground(QtGui.QBrush(QtGui.QColor(c)))
+                    #cursor.setCharFormat(format)
+                    #cursor.insertText(aa)
+                    line += '<span style="background-color:%s;">%s</span>' %(c,aa)
+                cursor.insertHtml(line)
+                w.insertPlainText('\n')
+        #cursor.resetCharFormat()
         return
 
     def save_alignment(self):

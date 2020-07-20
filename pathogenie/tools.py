@@ -674,6 +674,45 @@ def show_alignment(aln, chunks=0, diff=False, offset=0):
     s = '\n'.join(s)
     return s
 
+def get_sequence_colors(seqs, palette='tab20'):
+    """Get colors for a sequence"""
+
+    from Bio.PDB.Polypeptide import aa1
+    aa1 = list(aa1)
+    aa1.append('-')
+    aa1.append('X')
+    import matplotlib as mpl
+    from matplotlib import cm
+    pal = cm.get_cmap(palette, 256)
+    pal = [mpl.colors.to_hex(i) for i in pal(np.linspace(0, 1, 20))]
+    pal.append('white')
+    pal.append('white')
+
+    pcolors = {i:j for i,j in zip(aa1,pal)}
+    text = [i for s in list(seqs) for i in s]
+    clrs =  {'A':'red','T':'green','G':'orange','C':'blue','-':'white'}
+    try:
+        colors = [clrs[i] for i in text]
+    except:
+        colors = [pcolors[i] for i in text]
+    return colors
+
+def get_protein_colors(palette='tab20'):
+    """Get protein color dict"""
+
+    from Bio.PDB.Polypeptide import aa1
+    aa1 = list(aa1)
+    aa1.append('-')
+    aa1.append('X')
+    import matplotlib as mpl
+    from matplotlib import cm
+    pal = cm.get_cmap(palette, 256)
+    pal = [mpl.colors.to_hex(i) for i in pal(np.linspace(0, 1, 20))]
+    pal.append('white')
+    pal.append('white')
+    pcolors = {i:j for i,j in zip(aa1,pal)}
+    return pcolors
+
 def read_hmmer3(infile):
     """read hmmer3 tab file and return dataframe"""
 
