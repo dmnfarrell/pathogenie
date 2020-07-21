@@ -418,8 +418,24 @@ class FileViewer(QDialog):
         vScrollBar.triggerAction(QScrollBar.SliderToMinimum)
         return
 
+class AlignmentWidget(QWidget):
+    """Widget for showing sequence alignments"""
+    def __init__(self, parent=None):
+        super(AlignmentWidget, self).__init__(parent)
+        l = QHBoxLayout(self)
+        self.setLayout(l)
+        self.m = QSplitter(self)
+        l.addWidget(self.m)
+        self.left = PlainTextEditor(self.m, readOnly=True)
+        self.right = PlainTextEditor(self.m, readOnly=True)
+        self.left.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.right.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.m.setSizes([200,300])
+        self.m.setStretchFactor(1,2)
+        return
+
 class SequencesViewer(QDialog):
-    """Viewer for sequence alignments"""
+    """Viewer for sequences and alignments"""
 
     def __init__(self, parent=None, filename=None, title='sequences'):
         super(SequencesViewer, self).__init__(parent)
@@ -444,9 +460,14 @@ class SequencesViewer(QDialog):
         self.ed.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.tabs.addTab(self.ed, 'fasta')
 
-        self.alnview = PlainTextEditor(self, readOnly=True)
-        self.alnview.setLineWrapMode(QPlainTextEdit.NoWrap)
+        self.alnview = AlignmentWidget(self)
         self.tabs.addTab(self.alnview, 'alignment')
+
+        import pylab as plt
+        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+        self.fig,self.ax = plt.subplots(1,1)
+        self.treeview = FigureCanvas(self.fig)
+        self.tabs.addTab(self.treeview, 'tree')
 
         sidebar = QWidget()
         sidebar.setFixedWidth(180)
@@ -476,6 +497,7 @@ class SequencesViewer(QDialog):
         w.addItems(['no color','color by residue'])
         w.setCurrentIndex(1)
         w.activated.connect(self.show_alignment)
+        self.formatchoice = w
         l2.addWidget(w)
         #lbl = QLabel('Width')
         #l2.addWidget(lbl)
@@ -490,22 +512,28 @@ class SequencesViewer(QDialog):
 
     def zoom_out(self):
         self.ed.zoom(-1)
-        self.alnview.zoom(-1)
+        self.alnview.left.zoom(-1)
+        self.alnview.right.zoom(-1)
         return
 
     def zoom_in(self):
         self.ed.zoom(1)
-        self.alnview.zoom(1)
+        self.alnview.left.zoom(1)
+        self.alnview.right.zoom(1)
         return
 
     def load_records(self, recs):
+        """Load seqrecords"""
 
         self.recs = recs
+        self.reference = self.recs[0]
+        #rdict = SeqIO.to_dict(recs)
         self.show_fasta()
         self.show_alignment()
         return
 
     def show_fasta(self):
+        """Show records as fasta"""
 
         recs = self.recs
         if recs == None:
@@ -518,6 +546,7 @@ class SequencesViewer(QDialog):
         return
 
     def align(self):
+        """Align current sequences"""
 
         if self.aln == None:
             outfile = 'temp.fa'
@@ -534,29 +563,37 @@ class SequencesViewer(QDialog):
         calculator = DistanceCalculator('identity')
         constructor = DistanceTreeConstructor(calculator, 'nj')
         tree = constructor.build_tree(self.aln)
-        #self.show_info(Phylo.draw_ascii(tree))
-        #plt.gca()(frameon=False)
-        Phylo.draw(tree)
+        try:
+            Phylo.draw(tree,axes=self.ax)
+        except:
+            self.ax.set_frame_on(False)
+            self.fig.canvas.draw()
         return
 
     def show_alignment(self):
-        self.draw_colored_alignment(self.alnview)
+
+        format = self.formatchoice.currentText()
+        self.draw_alignment(format)
         return
 
-    def draw_colored_alignment(self, w):
+    def draw_alignment(self, format='color by residue'):
         """Show alignment with colored columns"""
 
+        left = self.alnview.left
+        right = self.alnview.right
         chunks=0
         offset=0
         diff=False
         self.align()
         aln = self.aln
-        w.clear()
+        left.clear()
+        right.clear()
         self.scroll_top()
 
         colors = tools.get_protein_colors()
         format = QtGui.QTextCharFormat()
-        cursor = w.textCursor()
+        format.setBackground(QtGui.QBrush(QtGui.QColor('white')))
+        cursor = right.textCursor()
 
         ref = aln[0]
         l = len(aln[0])
@@ -570,26 +607,23 @@ class SequencesViewer(QDialog):
             start,end = c
             lbls = np.arange(start+1,end+1,10)-offset
             head = ''.join([('%-10s' %i) for i in lbls])
-            s = '%-25s %s' %('',head)
-            w.appendPlainText(s)
-            w.insertPlainText('\n')
+            #s = '%-25s %s' %('',head)
+            cursor.setCharFormat(format)
+            cursor.insertText(head)
+            right.insertPlainText('\n')
+            left.appendPlainText(' ')
             for a in aln:
                 name = a.id[:20]
                 seq = a.seq[start:end]
-                s = '%25s ' %(name)
-                w.insertPlainText(s)
-                #s = '<span style="background-color:white;">%25s</span>' %name
-                #cursor.insertHtml(s)
+                #s = '%25s ' %(name)
+                left.appendPlainText(name)
                 line = ''
                 for aa in seq:
                     c = colors[aa]
-                    #format.setBackground(QtGui.QBrush(QtGui.QColor(c)))
-                    #cursor.setCharFormat(format)
-                    #cursor.insertText(aa)
                     line += '<span style="background-color:%s;">%s</span>' %(c,aa)
                 cursor.insertHtml(line)
-                w.insertPlainText('\n')
-        #cursor.resetCharFormat()
+                right.insertPlainText('\n')
+        cursor.setCharFormat(format)
         return
 
     def save_alignment(self):
