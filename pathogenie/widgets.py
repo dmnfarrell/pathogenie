@@ -434,12 +434,14 @@ class AlignmentWidget(QWidget):
         self.m.setStretchFactor(1,2)
         return
 
-class SequencesViewer(QDialog):
+class SequencesViewer(QMainWindow):
     """Viewer for sequences and alignments"""
 
-    def __init__(self, parent=None, filename=None, title='sequences'):
+    def __init__(self, parent=None, filename=None, title='Sequence Viewer'):
         super(SequencesViewer, self).__init__(parent)
+        #QMainWindow.__init__(self, flags=QtCore.Qt.Window)
         self.setWindowTitle(title)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setGeometry(QtCore.QRect(200, 200, 1000, 600))
         self.setMinimumHeight(150)
         self.recs = None
@@ -451,23 +453,25 @@ class SequencesViewer(QDialog):
     def add_widgets(self):
         """Add widgets"""
 
-        l = QHBoxLayout(self)
-        self.setLayout(l)
-        self.tabs = QTabWidget(self)
+        self.main = QWidget(self)
+        self.setCentralWidget(self.main)
+        l = QHBoxLayout(self.main)
+        self.main.setLayout(l)
+        self.tabs = QTabWidget(self.main)
         l.addWidget(self.tabs)
 
         self.ed = ed = PlainTextEditor(self, readOnly=True)
         self.ed.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.tabs.addTab(self.ed, 'fasta')
 
-        self.alnview = AlignmentWidget(self)
+        self.alnview = AlignmentWidget(self.main)
         self.tabs.addTab(self.alnview, 'alignment')
 
-        import pylab as plt
-        from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-        self.fig,self.ax = plt.subplots(1,1)
-        self.treeview = FigureCanvas(self.fig)
-        self.tabs.addTab(self.treeview, 'tree')
+        #import pylab as plt
+        #from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+        #self.fig,self.ax = plt.subplots(1,1)
+        #self.treeview = FigureCanvas(self.fig)
+        #self.tabs.addTab(self.treeview, 'tree')
 
         sidebar = QWidget()
         sidebar.setFixedWidth(180)
@@ -475,12 +479,9 @@ class SequencesViewer(QDialog):
         l2 = QVBoxLayout(sidebar)
         l2.setSpacing(5)
         l2.setAlignment(QtCore.Qt.AlignTop)
-        btn = QPushButton('Save Alignment')
-        btn.clicked.connect(self.save_alignment)
-        l2.addWidget(btn)
-        btn = QPushButton('Show Tree')
-        btn.clicked.connect(self.show_tree)
-        l2.addWidget(btn)
+        #btn = QPushButton('Show Tree')
+        #btn.clicked.connect(self.show_tree)
+        #l2.addWidget(btn)
         btn = QPushButton()
         btn.clicked.connect(self.zoom_out)
         iconw = QIcon.fromTheme('zoom-out')
@@ -494,15 +495,40 @@ class SequencesViewer(QDialog):
         lbl = QLabel('Format')
         l2.addWidget(lbl)
         w = QComboBox()
-        w.addItems(['no color','color by residue'])
+        w.addItems(['no color','color by residue','color by difference'])
         w.setCurrentIndex(1)
         w.activated.connect(self.show_alignment)
         self.formatchoice = w
+        l2.addWidget(w)
+        lbl = QLabel('Set Reference')
+        l2.addWidget(lbl)
+        w = QComboBox()
+        w.activated.connect(self.set_reference)
+        self.referencechoice = w
+        l2.addWidget(w)
+        lbl = QLabel('Aligner')
+        l2.addWidget(lbl)
+        w = QComboBox()
+        w.setCurrentIndex(1)
+        w.addItems(['clustal','muscle'])
+        self.alignerchoice = w
         l2.addWidget(w)
         #lbl = QLabel('Width')
         #l2.addWidget(lbl)
         #w = QLineEdit()
         #l2.addWidget(w)
+        self.create_menu()
+        return
+
+    def create_menu(self):
+        """Create the menu bar for the application. """
+
+        self.file_menu = QMenu('&File', self)
+        self.menuBar().addMenu(self.file_menu)
+        self.file_menu.addAction('&Load Fasta File', self.load_fasta,
+                QtCore.Qt.CTRL + QtCore.Qt.Key_F)
+        self.file_menu.addAction('&Save Alignment', self.save_alignment,
+                QtCore.Qt.CTRL + QtCore.Qt.Key_S)
         return
 
     def scroll_top(self):
@@ -522,14 +548,31 @@ class SequencesViewer(QDialog):
         self.alnview.right.zoom(1)
         return
 
+    def load_fasta(self, filename=None):
+        """Load fasta file"""
+
+        if filename == None:
+            filename, _ = QFileDialog.getOpenFileName(self, 'Open File', './',
+                            filter="Fasta Files(*.fa *.fna *.fasta);;All Files(*.*)")
+        if not filename:
+            return
+        recs = list(SeqIO.parse(filename, 'fasta'))
+        self.load_records(recs)
+        return
+
     def load_records(self, recs):
-        """Load seqrecords"""
+        """Load seqrecords list"""
 
         self.recs = recs
         self.reference = self.recs[0]
-        #rdict = SeqIO.to_dict(recs)
+        rdict = SeqIO.to_dict(recs)
         self.show_fasta()
         self.show_alignment()
+        self.referencechoice.addItems(list(rdict.keys()))
+        return
+
+    def set_reference(self):
+        ref = self.referencechoice.currentText()
         return
 
     def show_fasta(self):
@@ -541,7 +584,7 @@ class SequencesViewer(QDialog):
         self.ed.clear()
         for rec in recs:
             s = rec.format('fasta')
-            self.ed.appendPlainText(s)
+            self.ed.insertPlainText(s)
         self.scroll_top()
         return
 
@@ -608,14 +651,13 @@ class SequencesViewer(QDialog):
             lbls = np.arange(start+1,end+1,10)-offset
             head = ''.join([('%-10s' %i) for i in lbls])
             #s = '%-25s %s' %('',head)
-            cursor.setCharFormat(format)
+            #cursor.setCharFormat(format)
             cursor.insertText(head)
             right.insertPlainText('\n')
             left.appendPlainText(' ')
             for a in aln:
-                name = a.id[:20]
+                name = a.id
                 seq = a.seq[start:end]
-                #s = '%25s ' %(name)
                 left.appendPlainText(name)
                 line = ''
                 for aa in seq:
@@ -623,7 +665,7 @@ class SequencesViewer(QDialog):
                     line += '<span style="background-color:%s;">%s</span>' %(c,aa)
                 cursor.insertHtml(line)
                 right.insertPlainText('\n')
-        cursor.setCharFormat(format)
+        #cursor.setCharFormat(format)
         return
 
     def save_alignment(self):

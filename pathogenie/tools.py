@@ -332,7 +332,7 @@ def blast_sequences(database, seqs, labels=None, **kwargs):
     return df
 
 def clustal_alignment(filename=None, seqs=None, command="clustalw"):
-    """Align 2 sequences with clustal"""
+    """Align sequences with clustal"""
 
     if filename == None:
         filename = 'temp.faa'
@@ -348,7 +348,7 @@ def clustal_alignment(filename=None, seqs=None, command="clustalw"):
     return align
 
 def muscle_alignment(filename=None, seqs=None):
-    """Align 2 sequences with muscle"""
+    """Align sequences with muscle"""
 
     if filename == None:
         filename = 'temp.faa'

@@ -356,7 +356,7 @@ class pathogenieApp(QMainWindow):
 
         options = QFileDialog.Options()
         filenames, _ = QFileDialog.getOpenFileNames(self, 'Open File', './',
-                                                    filter="Fasta Files(*.fa *.fna *.fasta);;All Files(*.*)")
+                            filter="Fasta Files(*.fa *.fna *.fasta);;All Files(*.*)")
         if not filenames:
             return
         self.load_fasta_table(filenames)
@@ -635,11 +635,11 @@ class pathogenieApp(QMainWindow):
         #align proteins
         outfile = os.path.join(app.tempdir, 'hits.fasta')
         tools.dataframe_to_fasta(bl, seqkey='sseq', idkey='sseqid', outfile=outfile)
-        aln = tools.clustal_alignment(outfile)
+        #aln = tools.clustal_alignment(outfile)
         #self.show_info('orthologs for %s' %rec.description)
         #self.show_info(aln.format('clustal'))
         #open sequence viewer
-        fw = widgets.SequencesViewer(self, title=rec.description)
+        fw = widgets.SequencesViewer(self,title=rec.description)
         recs = list(SeqIO.parse(outfile,'fasta'))
         fw.load_records(recs)
         return
@@ -659,7 +659,7 @@ class pathogenieApp(QMainWindow):
             result.append(df)
         featsdf = pd.concat(result)
         #print (featsdf)
-        tools.dataframe_to_fasta(featsdf, idkey='sample',descrkey='sample', outfile=outfile)
+        tools.dataframe_to_fasta(featsdf, idkey='sample', descrkey='sample', outfile=outfile)
         tools.make_blast_database(outfile, dbtype='prot')
         return
 

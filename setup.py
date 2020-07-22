@@ -27,7 +27,8 @@ setup(
     entry_points = {
         'console_scripts': [
             'pathogenie=pathogenie.app:main',
-            'pathogenie-gui=pathogenie.gui:main']
+            'pathogenie-gui=pathogenie.gui:main',
+            'sequenceviewer=pathogenie.seqview:main']
             },
     classifiers = ['Operating System :: OS Independent',
             'Programming Language :: Python :: 2.7',

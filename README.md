@@ -4,7 +4,7 @@
 
 <img align="right" src=img/logo.png width=180px>
 
-This is a desktop and command line program for annotating draft bacterial and viral genomes. It may also be used for quickly detecting arbitrary sequences such as antibiotic resistance genes (AMR) proteins in nucleotide sequences. It uses Blast to find hits to known gene sequences from sequence databases. The inputs are fasta files. Annotation is performed in a similar manner to Prokka and first requires an assembled genome if you have sequenced reads. The program is written in Python. Currently it is available as a graphical desktop application. A command line tool will also be added. You can also used from inside Python.
+This is a desktop and command line program for annotating draft bacterial and viral genomes. It may also be used for quickly detecting arbitrary sequences such as antibiotic resistance genes (AMR) proteins in nucleotide sequences. It uses Blast to find hits to known gene sequences from sequence databases. The inputs are fasta files. Annotation is performed in a similar manner to Prokka and first requires an assembled genome if you have sequenced reads. The program is written in Python. Currently it is available as a graphical desktop application. A command line tool will also be added. You can also use it from inside Python scripts.
 
 ## Usage
 
@@ -65,6 +65,22 @@ The external binaries can all be installed on Debian/Ubuntu based systems using:
 ### OSX
 
 **Not yet tested** but may work if you can install the dependencies. You can probably install them with bioconda.
+
+## Use from python
+
+Run an annotation and save the results:
+
+```python
+import pathogenie
+for file in fastafiles:  
+    name = os.path.basename(file)
+    out = name+'.gb'    
+    res,recs = pathogenie.run_annotation(file, threads=10)
+    #save genbank
+    pathogenie.recs_to_genbank(recs, out)
+    #save gff
+    pathogenie.recs_to_gff(recs, name+'.gff')
+```
 
 ## Links
 
