@@ -432,6 +432,9 @@ class AlignmentWidget(QWidget):
         self.right.setLineWrapMode(QPlainTextEdit.NoWrap)
         self.m.setSizes([200,300])
         self.m.setStretchFactor(1,2)
+        #connect scrollbars
+        self.right.verticalScrollBar().sliderMoved.connect(self.left.verticalScrollBar().setValue)
+        
         return
 
 class SequencesViewer(QMainWindow):
@@ -664,8 +667,9 @@ class SequencesViewer(QMainWindow):
                     c = colors[aa]
                     line += '<span style="background-color:%s;">%s</span>' %(c,aa)
                 cursor.insertHtml(line)
-                right.insertPlainText('\n')
+                cursor.insertText('\n')
         #cursor.setCharFormat(format)
+        left.appendPlainText('')
         return
 
     def save_alignment(self):

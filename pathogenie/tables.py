@@ -240,18 +240,22 @@ class DataFrameTable(QTableView):
     def columnHeaderMenu(self, pos):
 
         hheader = self.horizontalHeader()
-        column = hheader.logicalIndexAt(hheader.mapFromGlobal(pos))
-        #print (column)
-        model = self.model
+        idx = hheader.logicalIndexAt(pos)
+        column = self.model.df.columns[idx]
+        #model = self.model
         menu = QMenu(self)
-        setIndexAction = menu.addAction("Set as Index")
-        #deleteColumnAction = menu.addAction("Delete Column")
+        #setIndexAction = menu.addAction("Set as Index")
+        deleteColumnAction = menu.addAction("Delete Column")
+        renameColumnAction = menu.addAction("Rename Column")
+        addColumnAction = menu.addAction("Add Column")
         #sortAction = menu.addAction("Sort By")
         action = menu.exec_(self.mapToGlobal(pos))
-        if action == setIndexAction:
-            self.setIndex()
-        #elif action == sortAction:
-        #    self.sort(column)
+        if action == deleteColumnAction:
+            self.deleteColumn(column)
+        elif action == renameColumnAction:
+            self.renameColumn(column)
+        elif action == addColumnAction:
+            self.addColumn()
         return
 
     def keyPressEvent(self, event):
@@ -280,9 +284,13 @@ class DataFrameTable(QTableView):
 
         menu = self.menu
         copyAction = menu.addAction("Copy")
+        exportAction = menu.addAction("Export Table")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == copyAction:
             self.copy()
+        elif action == exportAction:
+            self.exportTable()
+        return
 
     def setIndex(self):
         return
@@ -322,16 +330,35 @@ class DataFrameTable(QTableView):
             self.refresh()
         return
 
+    def deleteColumn(self, column=None):
+
+        reply = QMessageBox.question(self, 'Delete Rows?',
+                             'Are you sure?', QMessageBox.Yes, QMessageBox.No)
+        if reply == QMessageBox.No:
+            return False
+        self.model.df = self.model.df.drop(columns=[column])
+        self.refresh()
+        return
+
     def deleteRows(self):
 
         rows = self.getSelectedRows()
-        answer = QMessageBox.question(self, 'Delete Rows?',
+        reply = QMessageBox.question(self, 'Delete Rows?',
                              'Are you sure?', QMessageBox.Yes, QMessageBox.No)
-        if not answer:
-            return
+        if reply == QMessageBox.No:
+            return False
         idx = self.model.df.index[rows]
         self.model.df = self.model.df.drop(idx)
         self.refresh()
+        return
+
+    def renameColumn(self, column=None):
+
+        name, ok = QInputDialog().getText(self, "Enter New Column Name",
+                                             "Name:", QLineEdit.Normal)
+        if ok and name:
+            self.model.df.rename(columns={column:name},inplace=True)
+            self.refresh()
         return
 
 class DataFrameModel(QtCore.QAbstractTableModel):
@@ -345,7 +372,7 @@ class DataFrameModel(QtCore.QAbstractTableModel):
         return
 
     def update(self, df):
-        print('Updating Model')
+        #print('Updating Model')
         self.df = df
 
     def rowCount(self, parent=QtCore.QModelIndex()):
@@ -397,13 +424,14 @@ class DataFrameModel(QtCore.QAbstractTableModel):
         i = index.row()
         j = index.column()
         curr = self.df.iloc[i,j]
-        print (curr, value)
+        #print (curr, value)
         self.df.iloc[i,j] = value
         #self.dataChanged.emit()
         return True
 
     def onDataChanged(self):
-        print (self.df)
+        #print (self.df)
+        return
 
     def flags(self, index):
             return Qt.ItemIsSelectable|Qt.ItemIsEnabled|Qt.ItemIsEditable
@@ -416,16 +444,6 @@ class DefaultTable(DataFrameTable):
         DataFrameTable.__init__(self, parent, dataframe)
         self.app = app
         self.setWordWrap(False)
-
-    def addActions(self, event, row):
-
-        menu = self.menu
-        #showSequencesAction = menu.addAction("Show sequences")
-        #action = menu.exec_(self.mapToGlobal(event.pos()))
-        #if action == showSequencesAction:
-        #    self.app.show_fasta_sequences(row)
-
-        return
 
 class FilesTable(DataFrameTable):
     """
@@ -448,7 +466,7 @@ class FilesTable(DataFrameTable):
         #plotSummaryAction = menu.addAction("Plot Summary")
         addAnnotationAction = menu.addAction("Add Annotation From File")
         removeAction = menu.addAction("Remove Selected")
-        addColumnAction = menu.addAction("Add Column")
+        #addColumnAction = menu.addAction("Add Column")
         exportAction = menu.addAction("Export Table")
 
         action = menu.exec_(self.mapToGlobal(event.pos()))
@@ -473,8 +491,8 @@ class FilesTable(DataFrameTable):
             self.deleteRows()
         elif action == exportAction:
             self.exportTable()
-        elif action == addColumnAction:
-            self.addColumn()
+        #elif action == addColumnAction:
+        #    self.addColumn()
         return
 
     def edit(self, index, trigger, event):
@@ -539,9 +557,10 @@ class FeaturesTable(DataFrameTable):
         menu = self.menu
         showfeatureAction = menu.addAction("Draw Feature(s)")
         copysequenceAction = menu.addAction("Copy Sequence")
-        showproteinsequencesAction = menu.addAction("Show Protein Sequences (fasta)")
-        shownucleotidesequenceAction = menu.addAction("Show Nucleotide Sequence (fasta)")
-        findorthologsAction = menu.addAction("Find Orthologs")
+        showproteinsequencesAction = menu.addAction("Show Protein Sequences")
+        shownucleotidesequenceAction = menu.addAction("Show Nucleotide Sequence")
+        findorthologsAction = menu.addAction("Find Protein Orthologs")
+        findMatchingRegionsAction = menu.addAction("Find Orthologous Regions")
         exportAction = menu.addAction("Export Table")
         action = menu.exec_(self.mapToGlobal(event.pos()))
         if action == showfeatureAction:
@@ -554,6 +573,8 @@ class FeaturesTable(DataFrameTable):
             self.show_protein_sequences()
         elif action == findorthologsAction:
             self.find_orthologs(row)
+        elif action == findMatchingRegionsAction:
+            self.find_matching_regions()
         elif action == exportAction:
             self.exportTable()
 
@@ -581,8 +602,8 @@ class FeaturesTable(DataFrameTable):
         clip.setText(data.translation)
         return
 
-    def show_nucleotide_sequence(self):
-        """Show sequence for selected region"""
+    def get_selected_region(self):
+        """Get nucleotide sequence for selected region in table"""
 
         name = self.name
         rows = self.getSelectedRows()
@@ -590,13 +611,19 @@ class FeaturesTable(DataFrameTable):
         start = data.start.min()
         end = data.end.max()
         chrom = data.id.iloc[0]
-        print (start, end)
+        #print (start, end)
         #reference to annotations
         recs = SeqIO.to_dict(self.app.annotations[name])
         rec = recs[chrom]
         new = rec[start:end]
         new.id = name
         new.description = chrom+':'+str(start)+'-'+str(end)
+        return new
+
+    def show_nucleotide_sequence(self):
+        """Show sequence for selected region"""
+
+        new = self.get_selected_region()
         self.app.show_info('------------------------------------------------')
         self.app.show_info(new.format('fasta'))
         return
@@ -624,6 +651,14 @@ class FeaturesTable(DataFrameTable):
         name = data.locus_tag+'_'+data.id
         seq = SeqRecord(Seq(data.translation),id=name,description=data['product'])
         self.app.find_orthologs(seq, label=name)
+        return
+
+    def find_matching_regions(self):
+
+        name = self.name
+        #rows = self.getSelectedRows()
+        new = self.get_selected_region()
+        self.app.find_orthologous_regions(new, label=name)
         return
 
     def edit(self, index, trigger, event):

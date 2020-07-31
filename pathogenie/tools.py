@@ -488,12 +488,14 @@ def recs_to_gff(recs, outfile):
     return
 
 def get_gilist(accs):
+
     query  = " ".join(accs)
     handle = Entrez.esearch(db="nucleotide",term=query,retmax=10000)
     gilist = Entrez.read(handle)['IdList']
     return gilist
 
 def read_blast_nr(filename):
+    
     blastcols = ['contig','gid','name','accession','pident','length',
                  '?', '61', 'qstart', 'qend', 'sstart', 'send',
                   'evalue', 'score']
@@ -528,6 +530,7 @@ def get_product(x):
 
 def prokka_results(path,names):
     """parse prokka results for multiple files"""
+
     res=[]
     for n in names:
         f = '%s/%s/%s.tsv' %(path,n,n)
@@ -542,17 +545,6 @@ def prokka_results(path,names):
     #res['aro'] = res['product'].apply(lambda x: get_aro(x))
     res['fam'] = res['product'].apply(lambda x: get_product(x))
     return res
-
-def get_presence_absence(df, cols=None):
-    """parse roary file"""
-    if cols is None:
-        cols = df.columns[14:]
-    x=df.copy()
-    x['cat'] = x.Annotation.apply(lambda x: apply_cat(x))
-    x = x.set_index(['cat','Gene','Annotation'])
-    x = x[cols].notnull().astype('int')
-    #x = x.loc[x.index.dropna()]
-    return x
 
 def apply_cat(x):
     keys=['ARO','efflux','adhesin','LEE','porin','stress',
@@ -587,7 +579,9 @@ def genes_clustermap(x,xticklabels=0,title=''):
 
 #phylo trees
 
-def get_tree(aln, kind='nj'):
+def build_tree(aln, kind='nj'):
+    """Build a tree with bio.phylo module"""
+
     from Bio.Phylo.TreeConstruction import DistanceCalculator,DistanceTreeConstructor
     calculator = DistanceCalculator('identity')
     dm = calculator.get_distance(aln)
@@ -596,6 +590,8 @@ def get_tree(aln, kind='nj'):
     return dm, tree
 
 def clear_clades(tree):
+    """Clear inner labels for clades in bio.pyhlo tree"""
+
     names = {}
     for idx, clade in enumerate(tree.find_clades()):
         if 'Inner' in clade.name :
@@ -604,8 +600,12 @@ def clear_clades(tree):
         names[clade.name] = clade
     return names
 
-def draw_tree(tree, root=None, labels=None, clear=True, title=''):
-    f,ax=plt.subplots(figsize=(10,8))
+def draw_tree(tree, root=None, labels=None, clear=True, title='', ax=None):
+    """Draw phylogenetic tree with biopython"""
+
+    import pylab as plt
+    if ax == None:
+        f,ax=plt.subplots(figsize=(10,8))
     if clear == True:
         try:
             clear_clades(tree)
@@ -621,11 +621,12 @@ def draw_tree(tree, root=None, labels=None, clear=True, title=''):
                 #clade.name = labels[key]
 
     Phylo.draw(tree,axes=ax,axis=('off',),branch_labels=None,show_confidence=False)
-    #Phylo.draw_graphviz(tree,axes=ax,node_size=0)
     ax.set_title(title,fontsize=16)
     return f, tree
 
 def ml_tree(aln, name):
+    """ML tree with phyml"""
+
     from Bio.Phylo.Applications import PhymlCommandline
     AlignIO.write(aln, '%s.phy' %name, 'phylip-relaxed')
     cmdline = PhymlCommandline(input='%s.phy' %name, datatype='nt', alpha='e', bootstrap=100)

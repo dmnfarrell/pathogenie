@@ -200,6 +200,7 @@ class pathogenieApp(QMainWindow):
         self.analysis_menu.addAction('&Annotate Selected',
             lambda: self.run_threaded_process(self.annotate_files, self.annotation_completed))
         self.analysis_menu.addAction('&Gene Presence/Absence Matrix', self.show_gene_matrix)
+        self.analysis_menu.addAction('&Distance Tree from Features', self.show_distance_tree)
 
         self.settings_menu = QMenu('&Settings', self)
         self.menuBar().addMenu(self.settings_menu)
@@ -415,7 +416,8 @@ class pathogenieApp(QMainWindow):
         return
 
     def show_gene_matrix(self):
-        """Presence/absence matrix of gene features across samples"""
+        """Presence/absence matrix of gene features across samples.
+         Taken from current annotations"""
 
         recs = self.annotations
         x = []
@@ -436,7 +438,36 @@ class pathogenieApp(QMainWindow):
 
     def plot_gene_matrix(self):
 
+        if not hasattr(self, 'feature_matrix'):
+            self.show_gene_matrix()
         m = self.feature_matrix
+        return
+
+    def show_distance_tree(self):
+        """Dendogram from presence/absence matrix of annotated genes"""
+
+        from Bio import Phylo
+        from Bio.Phylo.TreeConstruction import DistanceMatrix,DistanceTreeConstructor
+        from Bio.Cluster import distancematrix
+        import pylab as plt
+        self.show_gene_matrix()
+        df = self.feature_matrix
+        X = df.iloc[:,2:].T
+        
+        mat = distancematrix(X)
+        names = list(X.index)
+        #print (names)
+        #names = [i[16:] for i in names]
+        new=[]
+        for i in mat:
+            new.append(np.insert(i, 0, 0).tolist())
+
+        dm = DistanceMatrix(names,new)
+        constructor = DistanceTreeConstructor()
+        tree = constructor.nj(dm)
+        Phylo.draw_ascii(tree,file=open('temp.txt','w'))
+        #f,ax=plt.subplots(1,1,figsize=(13,10))
+        tools.draw_tree(tree)
         return
 
     def plot_feature_summary(self):
@@ -601,6 +632,56 @@ class pathogenieApp(QMainWindow):
         self.running = False
         return
 
+    def find_orthologous_regions(self, rec, label=''):
+        """Find regions matching a selected part of the genome. Usually the
+        region will be selected from a set of proteins """
+
+        if self.running == True:
+            return
+
+        self.opts.applyOptions()
+        kwds = self.opts.kwds
+        threads = kwds['threads']
+        ident = kwds['blast_identity']
+        coverage = kwds['blast_coverage']
+        self.make_genomes_blastdb()
+        target = outfile = os.path.join(app.tempdir, 'genomes.fasta')
+        bl = tools.blast_sequences(target, [rec], maxseqs=100, evalue=1e-4,
+                                   cmd='blastn', show_cmd=True, threads=int(threads))
+        bl['qlength'] = bl.sequence.str.len()
+        bl['coverage'] = bl.length/bl.qlength*100
+        bl = bl[bl.pident>ident]
+        bl = bl[bl.coverage>coverage]
+        self.add_table(label+'_orthologs',bl)
+
+        outfile = os.path.join(app.tempdir, 'regions.fasta')
+        tools.dataframe_to_fasta(bl, seqkey='sseq', idkey='sseqid', outfile=outfile)
+        #aln = tools.muscle_alignment(outfile)
+        #tree = tools.build_tree(aln)
+        #print (tree)
+        #self.app.show_info(new.format('fasta'))
+
+        #show matching regions graphically?
+
+        return
+
+    def make_genomes_blastdb(self):
+        """Make nucleotide blast database of loaded fasta"""
+
+        df = self.fasta_table.getDataFrame()
+        recs = []
+        #for i,r in df.iterrows():
+        #    rec = SeqIO.read(r.filename,'fasta')
+        #    recs.append(rec)
+        for name in self.annotations:
+            rec = self.annotations[name]
+            recs.extend(rec)
+
+        outfile = os.path.join(app.tempdir, 'genomes.fasta')
+        SeqIO.write(recs, outfile, 'fasta')
+        tools.make_blast_database(outfile, dbtype='nucl')
+        return
+
     def find_orthologs(self, rec, label=''):
         """Find orthologs of annotated proteins from feature tables
            across all annotations given an input record"""
@@ -632,13 +713,9 @@ class pathogenieApp(QMainWindow):
             self.orthologs[label] = bl
 
         self.add_table(label+'_orthologs',bl)
-        #align proteins
+        #open sequence viewer
         outfile = os.path.join(app.tempdir, 'hits.fasta')
         tools.dataframe_to_fasta(bl, seqkey='sseq', idkey='sseqid', outfile=outfile)
-        #aln = tools.clustal_alignment(outfile)
-        #self.show_info('orthologs for %s' %rec.description)
-        #self.show_info(aln.format('clustal'))
-        #open sequence viewer
         fw = widgets.SequencesViewer(self,title=rec.description)
         recs = list(SeqIO.parse(outfile,'fasta'))
         fw.load_records(recs)
@@ -793,7 +870,7 @@ class pathogenieApp(QMainWindow):
         #Phylo.draw_ascii(tree)
         return aln, gene
 
-    def show_phylo_tree(self, row):
+    '''def show_phylo_tree(self, row):
 
         inputs = self.fasta_table.getDataFrame()
         files = inputs.filename
@@ -801,8 +878,7 @@ class pathogenieApp(QMainWindow):
         name = self.tabs.tabText(index)
         df = self.sheets[name]['data']
         data = df.iloc[row]
-
-        return
+        return'''
 
     def save_gene_alignment(self, row):
 
