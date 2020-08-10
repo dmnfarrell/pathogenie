@@ -199,8 +199,8 @@ class pathogenieApp(QMainWindow):
             lambda: self.run_threaded_process(self.run_gene_finder, self.find_genes_completed))
         self.analysis_menu.addAction('&Annotate Selected',
             lambda: self.run_threaded_process(self.annotate_files, self.annotation_completed))
-        self.analysis_menu.addAction('&Gene Presence/Absence Matrix', self.show_gene_matrix)
-        self.analysis_menu.addAction('&Distance Tree from Features', self.show_distance_tree)
+        self.analysis_menu.addAction('&Gene Presence/Absence Matrix', self.create_gene_matrix)
+        self.analysis_menu.addAction('&Tree Builder', self.tree_builder)
 
         self.settings_menu = QMenu('&Settings', self)
         self.menuBar().addMenu(self.settings_menu)
@@ -415,23 +415,10 @@ class pathogenieApp(QMainWindow):
             ed.text.insert(END, s.format("fasta"))
         return
 
-    def show_gene_matrix(self):
-        """Presence/absence matrix of gene features across samples.
-         Taken from current annotations"""
+    def create_gene_matrix(self):
+        """Presence/absence matrix of gene features across a set of annotations"""
 
-        recs = self.annotations
-        x = []
-        for name in self.annotations:
-            recs = self.annotations[name]
-            featsdf = tools.records_to_dataframe(recs)
-            featsdf['sample'] = name
-            x.append(featsdf)
-        x = pd.concat(x)
-        x.pivot_table
-        m = pd.pivot_table(x, index='sample', columns=['gene','product'], values='start')
-        m[m.notnull()] = 1
-        m = m.fillna(0)
-        m = m.T.reset_index()
+        m = tools.create_gene_matrix(self.annotations)
         self.add_table('feature matrix', m, kind='default')
         self.feature_matrix = m
         return
@@ -439,35 +426,15 @@ class pathogenieApp(QMainWindow):
     def plot_gene_matrix(self):
 
         if not hasattr(self, 'feature_matrix'):
-            self.show_gene_matrix()
+            self.create_gene_matrix()
         m = self.feature_matrix
         return
 
-    def show_distance_tree(self):
-        """Dendogram from presence/absence matrix of annotated genes"""
+    def tree_builder(self):
+        """Build dendogram/tree from annotated genes"""
 
-        from Bio import Phylo
-        from Bio.Phylo.TreeConstruction import DistanceMatrix,DistanceTreeConstructor
-        from Bio.Cluster import distancematrix
-        import pylab as plt
-        self.show_gene_matrix()
-        df = self.feature_matrix
-        X = df.iloc[:,2:].T
-        
-        mat = distancematrix(X)
-        names = list(X.index)
-        #print (names)
-        #names = [i[16:] for i in names]
-        new=[]
-        for i in mat:
-            new.append(np.insert(i, 0, 0).tolist())
-
-        dm = DistanceMatrix(names,new)
-        constructor = DistanceTreeConstructor()
-        tree = constructor.nj(dm)
-        Phylo.draw_ascii(tree,file=open('temp.txt','w'))
-        #f,ax=plt.subplots(1,1,figsize=(13,10))
-        tools.draw_tree(tree)
+        tv = widgets.TreeBuilder(self)
+        tv.load_annotations(self.annotations)
         return
 
     def plot_feature_summary(self):
@@ -492,10 +459,6 @@ class pathogenieApp(QMainWindow):
         i = self.right_tabs.addTab(w, name)
         self.right_tabs.setCurrentIndex(i)
         return w
-
-    def show_annotation_report(self):
-
-        return
 
     def show_feature_table(self):
         """Show features for selected annotation"""

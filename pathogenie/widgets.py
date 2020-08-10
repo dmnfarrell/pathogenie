@@ -29,6 +29,8 @@ import sys, os, io
 import numpy as np
 import pandas as pd
 import string
+from Bio.SeqRecord import SeqRecord
+from Bio.Seq import Seq
 from Bio import SeqIO
 
 try:
@@ -434,7 +436,60 @@ class AlignmentWidget(QWidget):
         self.m.setStretchFactor(1,2)
         #connect scrollbars
         self.right.verticalScrollBar().sliderMoved.connect(self.left.verticalScrollBar().setValue)
-        
+        return
+
+    def scroll_top(self):
+        vScrollBar = self.right.verticalScrollBar()
+        vScrollBar.triggerAction(QScrollBar.SliderToMinimum)
+        return
+
+    def draw_alignment(self, aln, format='color by residue'):
+        """Show alignment with colored columns"""
+
+        left = self.left
+        right = self.right
+        chunks=0
+        offset=0
+        diff = False
+
+        left.clear()
+        right.clear()
+        self.scroll_top()
+
+        colors = tools.get_protein_colors()
+        format = QtGui.QTextCharFormat()
+        format.setBackground(QtGui.QBrush(QtGui.QColor('white')))
+        cursor = right.textCursor()
+
+        ref = aln[0]
+        l = len(aln[0])
+        n=60
+        s=[]
+        if chunks > 0:
+            chunks = [(i,i+n) for i in range(0, l, n)]
+        else:
+            chunks = [(0,l)]
+        for c in chunks:
+            start,end = c
+            lbls = np.arange(start+1,end+1,10)-offset
+            head = ''.join([('%-10s' %i) for i in lbls])
+            #s = '%-25s %s' %('',head)
+            #cursor.setCharFormat(format)
+            cursor.insertText(head)
+            right.insertPlainText('\n')
+            left.appendPlainText(' ')
+            for a in aln:
+                name = a.id
+                seq = a.seq[start:end]
+                left.appendPlainText(name)
+                line = ''
+                for aa in seq:
+                    c = colors[aa]
+                    line += '<span style="background-color:%s;">%s</span>' %(c,aa)
+                cursor.insertHtml(line)
+                cursor.insertText('\n')
+        #cursor.setCharFormat(format)
+        left.appendPlainText('')
         return
 
 class SequencesViewer(QMainWindow):
@@ -600,76 +655,12 @@ class SequencesViewer(QMainWindow):
             self.aln = tools.clustal_alignment(outfile)
         return
 
-    def show_tree(self):
-
-        self.align()
-        import pylab as plt
-        from Bio import Phylo
-        from Bio.Phylo.TreeConstruction import DistanceTreeConstructor,DistanceCalculator
-        calculator = DistanceCalculator('identity')
-        constructor = DistanceTreeConstructor(calculator, 'nj')
-        tree = constructor.build_tree(self.aln)
-        try:
-            Phylo.draw(tree,axes=self.ax)
-        except:
-            self.ax.set_frame_on(False)
-            self.fig.canvas.draw()
-        return
-
     def show_alignment(self):
 
         format = self.formatchoice.currentText()
-        self.draw_alignment(format)
-        return
-
-    def draw_alignment(self, format='color by residue'):
-        """Show alignment with colored columns"""
-
-        left = self.alnview.left
-        right = self.alnview.right
-        chunks=0
-        offset=0
-        diff=False
         self.align()
         aln = self.aln
-        left.clear()
-        right.clear()
-        self.scroll_top()
-
-        colors = tools.get_protein_colors()
-        format = QtGui.QTextCharFormat()
-        format.setBackground(QtGui.QBrush(QtGui.QColor('white')))
-        cursor = right.textCursor()
-
-        ref = aln[0]
-        l = len(aln[0])
-        n=60
-        s=[]
-        if chunks > 0:
-            chunks = [(i,i+n) for i in range(0, l, n)]
-        else:
-            chunks = [(0,l)]
-        for c in chunks:
-            start,end = c
-            lbls = np.arange(start+1,end+1,10)-offset
-            head = ''.join([('%-10s' %i) for i in lbls])
-            #s = '%-25s %s' %('',head)
-            #cursor.setCharFormat(format)
-            cursor.insertText(head)
-            right.insertPlainText('\n')
-            left.appendPlainText(' ')
-            for a in aln:
-                name = a.id
-                seq = a.seq[start:end]
-                left.appendPlainText(name)
-                line = ''
-                for aa in seq:
-                    c = colors[aa]
-                    line += '<span style="background-color:%s;">%s</span>' %(c,aa)
-                cursor.insertHtml(line)
-                cursor.insertText('\n')
-        #cursor.setCharFormat(format)
-        left.appendPlainText('')
+        self.alnview.draw_alignment(aln, format)
         return
 
     def save_alignment(self):
@@ -680,6 +671,132 @@ class SequencesViewer(QMainWindow):
         if not filename:
             return
         SeqIO.write(self.aln,filename,format='clustal')
+        return
+
+class TreeBuilder(QMainWindow):
+    """Interface to build trees from annotations using various methods"""
+
+    def __init__(self, parent=None, title='Tree Builder'):
+        super(TreeBuilder, self).__init__(parent)
+        self.setWindowTitle(title)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setGeometry(QtCore.QRect(200, 200, 1000, 600))
+        self.setMinimumHeight(150)
+        self.add_widgets()
+        self.show()
+        return
+
+    def add_widgets(self):
+        """Add widgets"""
+
+        self.main = QWidget(self)
+        self.setCentralWidget(self.main)
+        l = QHBoxLayout(self.main)
+        self.main.setLayout(l)
+        self.tabs = QTabWidget(self.main)
+        l.addWidget(self.tabs)
+        import pylab as plt
+        from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+        self.fig,self.ax = plt.subplots(1,1)
+        self.treeview = FigureCanvas(self.fig)
+        self.tabs.addTab(self.treeview, 'tree')
+
+        self.alnview = AlignmentWidget(self.main)
+        self.tabs.addTab(self.alnview, 'alignment')
+
+        sidebar = QWidget()
+        sidebar.setFixedWidth(180)
+        l.addWidget(sidebar)
+        l2 = QVBoxLayout(sidebar)
+        l2.setSpacing(5)
+        l2.setAlignment(QtCore.Qt.AlignTop)
+        btn = QPushButton('Build Tree')
+        btn.clicked.connect(self.build_tree)
+        l2.addWidget(btn)
+        lbl = QLabel('Sequence Type')
+        l2.addWidget(lbl)
+        w = QComboBox()
+        w.addItems(['protein','nucleotide'])
+        self.seqtypechoice = w
+        l2.addWidget(w)
+        lbl = QLabel('Root On')
+        l2.addWidget(lbl)
+        w = QComboBox()
+        l2.addWidget(w)
+        w.addItems(['unrooted'])
+        self.rootchoice = w
+        lbl = QLabel('Genes')
+        l2.addWidget(lbl)
+        w = QListWidget()
+        w.setSelectionMode(QAbstractItemView.MultiSelection)
+        #w.setFixedHeight(200)
+        self.genechoice = w
+        l2.addWidget(w)
+
+    def load_annotations(self, annotations):
+        """Load annotations (lists of SeqRecord objects)"""
+
+        self.annotations = annotations
+        self.annot_df = tools.get_annotations_dataframe(annotations)
+        genes = sorted(list(self.annot_df.gene.dropna().unique()))
+        self.genechoice.addItems(genes)
+        samples = list(self.annot_df['sample'].unique())
+        self.rootchoice.addItems(samples)
+        return
+
+    def build_tree(self, seqtype='protein'):
+        """Build tree from a set of selected genes"""
+
+        df = self.annot_df
+        annot = self.annotations
+        samples = df['sample'].unique()
+        genes = [i.text() for i in self.genechoice.selectedItems()]
+        print (genes)
+        seqtype = self.seqtypechoice.currentText()
+
+        #get sequences for genes across all samples in order
+        found = []
+        for s in samples:
+            seq = ''
+            recs = SeqIO.to_dict(annot[s])
+            for g in genes:
+                rows = df[(df.gene==g) & (df['sample']==s)]
+                if len(rows)==0:
+                    continue
+                row = rows.iloc[0]
+                #print (row)
+                if seqtype == 'protein':
+                    seq += row.translation
+                    #print (seq)
+                else:
+                    #get nucleotide sequence instead
+                    rec = recs[row.id]
+                    new = rec.seq[row.start:row.end]
+                    #print (g)
+                    if row.strand == -1:
+                        new = new.reverse_complement()
+                    seq += str(new)
+                    #print (new)
+                    #print (new.translate())
+
+            #print (seq)
+            rec = SeqRecord(Seq(seq),id=s)
+            found.append(rec)
+
+        #align
+        outfile = 'temp.fa'
+        SeqIO.write(found, outfile, 'fasta')
+        aln = tools.muscle_alignment(outfile)
+        dm, tree = tools.build_tree(aln)
+        self.show_tree(tree)
+        self.alnview.draw_alignment(aln)
+        return
+
+    def show_tree(self, tree):
+        self.ax.cla()
+        self.tree = tree
+        tools.draw_tree(self.tree, ax=self.ax)
+        self.fig.canvas.draw()
         return
 
 class SeqFeaturesViewer(QDialog):

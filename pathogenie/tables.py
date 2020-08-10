@@ -447,10 +447,10 @@ class DefaultTable(DataFrameTable):
 
 class FilesTable(DataFrameTable):
     """
-    QTableView for files view.
+    QTableView class for main pathogenie table.
     """
     def __init__(self, parent=None, app=None, dataframe=None, fontsize=12, *args):
-        #super(DataFrameTable, self).__init__()
+
         DataFrameTable.__init__(self, parent, dataframe, fontsize)
         self.app = app
         self.setWordWrap(False)
@@ -466,12 +466,9 @@ class FilesTable(DataFrameTable):
         #plotSummaryAction = menu.addAction("Plot Summary")
         addAnnotationAction = menu.addAction("Add Annotation From File")
         removeAction = menu.addAction("Remove Selected")
-        #addColumnAction = menu.addAction("Add Column")
         exportAction = menu.addAction("Export Table")
 
         action = menu.exec_(self.mapToGlobal(event.pos()))
-        # Map the logical row index to a real index for the source model
-        #model = self.model
 
         if action == fileinfoAction:
             #print (row)
@@ -491,8 +488,6 @@ class FilesTable(DataFrameTable):
             self.deleteRows()
         elif action == exportAction:
             self.exportTable()
-        #elif action == addColumnAction:
-        #    self.addColumn()
         return
 
     def edit(self, index, trigger, event):

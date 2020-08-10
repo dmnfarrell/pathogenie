@@ -198,7 +198,7 @@ def features_to_dataframe(features, cds=False, id=''):
     return df
 
 def records_to_dataframe(recs):
-    """Convert multiple seqrecords features to dataframe"""
+    """Convert multiple seqrecords features to single dataframe"""
 
     res=[]
     for rec in recs:
@@ -421,7 +421,7 @@ def search_genbank(term='', filt=None):
     idlist = result['IdList']
     return idlist
 
-def retrieve_annotation(id_list):
+def retrieve_entrez_annotation(id_list):
 
     """Annotates Entrez Gene IDs using Bio.Entrez, in particular epost (to
     submit the data to NCBI) and esummary to retrieve the information.
@@ -495,7 +495,7 @@ def get_gilist(accs):
     return gilist
 
 def read_blast_nr(filename):
-    
+
     blastcols = ['contig','gid','name','accession','pident','length',
                  '?', '61', 'qstart', 'qend', 'sstart', 'send',
                   'evalue', 'score']
@@ -577,7 +577,46 @@ def genes_clustermap(x,xticklabels=0,title=''):
     cg.fig.subplots_adjust(right=0.8)
     return
 
-#phylo trees
+# annotation record functions
+
+def get_annotations_dataframe(annotations):
+    """Get dataframe from all annotation records"""
+
+    x=[]
+    for name in annotations:
+        recs = annotations[name]
+        featsdf = records_to_dataframe(recs)
+        featsdf['sample'] = name
+        x.append(featsdf)
+    df = pd.concat(x)
+    return df
+
+def get_nucleotide_sequence_from_record(self, recs, chrom, start, end):
+
+    recs = SeqIO.to_dict(recs)
+    rec = recs[chrom]
+    new = rec[start:end]
+    new.id = name
+    new.description = chrom+':'+str(start)+'-'+str(end)
+    return new
+
+def create_gene_matrix(annotations):
+    """Presence/absence matrix of gene features across a set of annotations"""
+
+    x = []
+    for name in annotations:
+        recs = annotations[name]
+        featsdf = records_to_dataframe(recs)
+        featsdf['sample'] = name
+        x.append(featsdf)
+    x = pd.concat(x)
+    m = pd.pivot_table(x, index='sample', columns=['gene','product'], values='start')
+    m[m.notnull()] = 1
+    m = m.fillna(0)
+    m = m.T.reset_index()
+    return m
+
+#phylogenetic tree functions
 
 def build_tree(aln, kind='nj'):
     """Build a tree with bio.phylo module"""
@@ -605,7 +644,7 @@ def draw_tree(tree, root=None, labels=None, clear=True, title='', ax=None):
 
     import pylab as plt
     if ax == None:
-        f,ax=plt.subplots(figsize=(10,8))
+        fig,ax=plt.subplots(figsize=(10,8))
     if clear == True:
         try:
             clear_clades(tree)
@@ -620,9 +659,32 @@ def draw_tree(tree, root=None, labels=None, clear=True, title='', ax=None):
                 clade.name = '%s; %s' %(key,labels[key])
                 #clade.name = labels[key]
 
-    Phylo.draw(tree,axes=ax,axis=('off',),branch_labels=None,show_confidence=False)
+    Phylo.draw(tree,axes=ax,axis=('off',), do_show=False, label_colors=None,
+                branch_labels=None, show_confidence=False)
     ax.set_title(title,fontsize=16)
-    return f, tree
+    ax.set_frame_on(False)
+    return
+
+def tree_from_distance_matrix(X):
+
+    from Bio import Phylo
+    from Bio.Phylo.TreeConstruction import DistanceMatrix,DistanceTreeConstructor
+    from Bio.Cluster import distancematrix
+    #import pylab as plt
+
+    mat = distancematrix(X)
+    names = list(X.index)
+    #print (names)
+    #names = [i[16:] for i in names]
+    new=[]
+    for i in mat:
+        new.append(np.insert(i, 0, 0).tolist())
+
+    dm = DistanceMatrix(names,new)
+    constructor = DistanceTreeConstructor()
+    tree = constructor.nj(dm)
+    #Phylo.draw_ascii(tree,file=open('temp.txt','w'))
+    return tree
 
 def ml_tree(aln, name):
     """ML tree with phyml"""
