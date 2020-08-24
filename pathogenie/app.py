@@ -34,7 +34,6 @@ from Bio.SeqFeature import SeqFeature, FeatureLocation
 from Bio.Alphabet import generic_dna
 from . import tools
 
-tempdir = tempfile.gettempdir()
 home = os.path.expanduser("~")
 config_path = os.path.join(home,'.config','pathogenie')
 module_path = os.path.dirname(os.path.abspath(__file__)) #path to module
@@ -44,6 +43,7 @@ customdbdir = os.path.join(config_path, 'custom')
 hmmdir = os.path.join(config_path, 'hmms')
 prokkadbdir = os.path.join(config_path, 'prokka')
 trustedproteindir = os.path.join(config_path, 'proteins')
+tempdir = os.path.join(config_path, 'tmp')
 
 db_names = ['card','resfinder','argannot','ncbi','plasmidfinder','ecoh','vfdb',
             'bacteria.16SrRNA','bacteria.23SrRNA']
@@ -73,6 +73,8 @@ if not os.path.exists(config_path):
         os.makedirs(config_path, exist_ok=True)
     except:
         os.makedirs(config_path)
+
+os.makedirs(tempdir, exist_ok=True)
 
 def check_platform():
     """See if we are running in Windows"""

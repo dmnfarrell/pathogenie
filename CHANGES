@@ -2,6 +2,12 @@
 CHANGES
 =======
 
+0.4.0
+-----
+
+* added tree builder
+* sequence alignment viewer
+
 0.3.0
 -----
 
