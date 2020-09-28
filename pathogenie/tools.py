@@ -103,12 +103,12 @@ def dataframe_to_seqrecords(df, seqkey='sequence', idkey='id', desckey='descript
                             alphabet=None):
     """Dataframe to list of Bio.SeqRecord objects"""
 
-    from Bio.Alphabet import IUPAC
+    #from Bio.Alphabet import IUPAC
     if alphabet=='protein':
         alphabet = IUPAC.protein
     seqs=[]
     for i,r in df.iterrows():
-        s = SeqRecord(Seq(r[seqkey],alphabet),id=r[idkey],description=r[desckey])
+        s = SeqRecord(Seq(r[seqkey]),id=r[idkey],description=r[desckey])
         seqs.append(s)
     return seqs
 

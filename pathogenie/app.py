@@ -31,7 +31,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
 from Bio.SeqFeature import SeqFeature, FeatureLocation
-from Bio.Alphabet import generic_dna
+#from Bio.Alphabet import generic_dna
 from . import tools
 
 home = os.path.expanduser("~")
@@ -489,7 +489,7 @@ def run_annotation(infile, prefix=None, ident=70, threads=4,
         #print (c, len(df), label)
         nucseq = contigs[c].seq
         rec = SeqRecord(nucseq)
-        rec.seq.alphabet = generic_dna
+        #rec.seq.alphabet = generic_dna
         rec.id = label
         rec.name = label
         rec.COMMENT = 'annotated with pathogenie'
