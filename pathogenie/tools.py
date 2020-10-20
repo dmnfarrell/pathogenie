@@ -360,10 +360,11 @@ def muscle_alignment(filename=None, seqs=None):
     align = AlignIO.read(name+'.txt', 'fasta')
     return align
 
-def plot_tree(dend_file,name='',ax=None):
+def plot_tree(dend_file, name='', ax=None):
     """Plot phylo tree"""
 
     from Bio import Phylo
+    import pylab as plt
     if ax==None:
         f,ax=plt.subplots(1,1,figsize=(12,8))
     tree = Phylo.read(dend_file, "newick")
@@ -666,14 +667,17 @@ def draw_tree(tree, root=None, labels=None, clear=True, title='', ax=None):
     return
 
 def tree_from_distance_matrix(X):
-
+    """Distance matrix to phylo tree"""
+    
     from Bio import Phylo
     from Bio.Phylo.TreeConstruction import DistanceMatrix,DistanceTreeConstructor
     from Bio.Cluster import distancematrix
-    #import pylab as plt
 
-    mat = distancematrix(X)
     names = list(X.index)
+    if type(X) is pd.DataFrame:
+        X = X.values
+    mat = distancematrix(X)
+
     #print (names)
     #names = [i[16:] for i in names]
     new=[]
