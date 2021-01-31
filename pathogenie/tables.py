@@ -27,10 +27,7 @@ import numpy as np
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
-from PySide2 import QtCore, QtGui
-from PySide2.QtCore import QObject
-from PySide2.QtWidgets import *
-from PySide2.QtGui import *
+from .qt import *
 from . import tools, widgets
 
 class ColumnHeader(QHeaderView):
@@ -301,11 +298,17 @@ class DataFrameTable(QTableView):
         return
 
     def refresh(self):
+        """Refresh table if dataframe is changed"""
 
         self.model.beginResetModel()
-        self.model.dataChanged.emit(0,0)
+        index = self.model.index
+        try:
+            self.model.dataChanged.emit(0,0)
+        except:
+            self.model.dataChanged.emit(index(0,0),index(0,0))
         self.model.endResetModel()
-
+        return
+        
     def importFile(self):
         dialogs.ImportDialog(self)
         return
@@ -434,7 +437,7 @@ class DataFrameModel(QtCore.QAbstractTableModel):
         return
 
     def flags(self, index):
-            return Qt.ItemIsSelectable|Qt.ItemIsEnabled|Qt.ItemIsEditable
+            return QtCore.Qt.ItemIsSelectable|QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsEditable
 
 class DefaultTable(DataFrameTable):
     """
@@ -659,4 +662,4 @@ class FeaturesTable(DataFrameTable):
     def edit(self, index, trigger, event):
         """Override edit to disable editing"""
 
-        return
+        return False

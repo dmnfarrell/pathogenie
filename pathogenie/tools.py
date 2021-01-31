@@ -104,8 +104,8 @@ def dataframe_to_seqrecords(df, seqkey='sequence', idkey='id', desckey='descript
     """Dataframe to list of Bio.SeqRecord objects"""
 
     #from Bio.Alphabet import IUPAC
-    if alphabet=='protein':
-        alphabet = IUPAC.protein
+    #if alphabet=='protein':
+    #    alphabet = IUPAC.protein
     seqs=[]
     for i,r in df.iterrows():
         s = SeqRecord(Seq(r[seqkey]),id=r[idkey],description=r[desckey])
@@ -460,12 +460,13 @@ def retrieve_sequences(id_list):
     return recs
 
 def recs_to_fasta(recs, outfile):
+    """SeqRecord objects to fasta"""
 
     res=[]
     for i in recs:
         r=recs[i]
         res.append( [r['GBSeq_primary-accession'],r['GBSeq_sequence'],r['GBSeq_definition']] )
-    df=pd.DataFrame(res,columns=['id','sequence','description'])
+    df = pd.DataFrame(res,columns=['id','sequence','description'])
     dataframe_to_fasta(df,outfile=outfile,seqkey='sequence',idkey='id')
     return
 
@@ -474,7 +475,7 @@ def recs_to_genbank(recs, outfile):
 
     handle = open(outfile,'w+')
     for rec in recs:
-        #rec = recs[i]
+        #print (rec)
         SeqIO.write(rec, handle, "genbank")
     handle.close()
     return
@@ -668,7 +669,7 @@ def draw_tree(tree, root=None, labels=None, clear=True, title='', ax=None):
 
 def tree_from_distance_matrix(X):
     """Distance matrix to phylo tree"""
-    
+
     from Bio import Phylo
     from Bio.Phylo.TreeConstruction import DistanceMatrix,DistanceTreeConstructor
     from Bio.Cluster import distancematrix

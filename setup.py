@@ -6,7 +6,7 @@ with open('pathogenie/description.txt') as f:
 
 setup(
     name = 'pathogenie',
-    version = '0.3.0',
+    version = '0.4.0',
     description = 'find or annotate microbial genes',
     long_description = long_description,
     url='https://github.com/dmnfarrell/pathogenie',
@@ -22,6 +22,7 @@ setup(
                       'matplotlib>=3.0',
                       'biopython>=1.5',
                       'bcbio_gff',
+                      'dna_features_viewer',
                       'pyside2>=5.1',
                       'future'],
     entry_points = {

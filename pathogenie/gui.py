@@ -25,10 +25,7 @@ import sys,os,traceback,subprocess
 import glob,platform,shutil
 import pickle
 import threading,time
-from PySide2 import QtCore
-from PySide2.QtWidgets import *
-from PySide2.QtGui import *
-
+from .qt import *
 import pandas as pd
 import numpy as np
 from Bio import SeqIO
@@ -120,29 +117,29 @@ class pathogenieApp(QMainWindow):
         from . import __version__
         self.projectlabel = QLabel('')
         self.statusBar.addWidget(self.projectlabel, 1)
-        self.projectlabel.setAlignment(Qt.AlignLeft)
+        self.projectlabel.setAlignment(QtCore.Qt.AlignLeft)
         lbl = QLabel("Output folder:")
-        lbl.setAlignment(Qt.AlignRight)
+        lbl.setAlignment(QtCore.Qt.AlignRight)
         self.statusBar.addWidget(lbl,1)
         self.outdirLabel = QLabel("")
         self.statusBar.addWidget(self.outdirLabel, 1)
         self.outdirLabel.setStyleSheet('color: blue')
-        self.outdirLabel.setAlignment(Qt.AlignLeft)
+        self.outdirLabel.setAlignment(QtCore.Qt.AlignLeft)
         lbl = QLabel("Trusted:")
-        lbl.setAlignment(Qt.AlignRight)
+        lbl.setAlignment(QtCore.Qt.AlignRight)
         self.statusBar.addWidget(lbl,1)
         self.trustedLabel = QLabel("")
         self.statusBar.addWidget(self.trustedLabel, 1)
         self.trustedLabel.setStyleSheet('color: blue')
-        self.trustedLabel.setAlignment(Qt.AlignLeft)
+        self.trustedLabel.setAlignment(QtCore.Qt.AlignLeft)
         self.progressbar = QProgressBar()
         self.progressbar.setRange(0,1)
         self.statusBar.addWidget(self.progressbar, 4)
-        self.progressbar.setAlignment(Qt.AlignRight)
+        self.progressbar.setAlignment(QtCore.Qt.AlignRight)
         self.setStatusBar(self.statusBar)
         return
 
-    @QtCore.Slot(int)
+    #@Slot(int)
     def close_tab(self, index):
         """Close current tab"""
 
@@ -152,7 +149,7 @@ class pathogenieApp(QMainWindow):
         del self.sheets[name]
         return
 
-    @QtCore.Slot(int)
+    #@Slot(int)
     def close_right_tab(self, index):
         """Close right tab"""
 
@@ -1018,7 +1015,7 @@ class Worker(QtCore.QRunnable):
         self.signals = WorkerSignals()
         self.kwargs['progress_callback'] = self.signals.progress
 
-    @QtCore.Slot()
+    @Slot()
     def run(self):
         try:
             result = self.fn(
@@ -1044,10 +1041,10 @@ class WorkerSignals(QtCore.QObject):
     result
         `object` data returned from processing, anything
     """
-    finished = QtCore.Signal()
-    error = QtCore.Signal(tuple)
-    result = QtCore.Signal(object)
-    progress = QtCore.Signal(str)
+    finished = Signal()
+    error = Signal(tuple)
+    result = Signal(object)
+    progress = Signal(str)
 
 class AppOptions(widgets.BaseOptions):
     """Class to provide a dialog for global plot options"""
@@ -1059,12 +1056,12 @@ class AppOptions(widgets.BaseOptions):
         dbs = app.db_names
         kingdom = ['bacteria','viruses','archaea']
         trusted = app.get_files_in_path(app.trustedproteindir)
-        cpus = [str(i) for i in range(1,os.cpu_count()+1)]
+        cpus = os.cpu_count()
         self.groups = {'general':['threads','overwrite'],
                        'annotation':['kingdom','hmmer','blast_identity','blast_coverage'],
                        'gene finding':['db','identity','coverage','multiple hits']
                        }
-        self.opts = {'threads':{'type':'combobox','default':4,'items':cpus},
+        self.opts = {'threads':{'type':'spinbox','default':4,'range':(1,cpus)},
                     'overwrite':{'type':'checkbox','default':True},
                     'db':{'type':'combobox','default':'card',
                     'items':dbs,'label':'database'},

@@ -1,0 +1,43 @@
+name: pathogenie
+version: '0.4.0'
+summary: microbial gene finder and annotation
+description: |
+  pathogenie This is a desktop and command line program for annotating draft bacterial
+  and viral genomes. It may also be used for quickly detecting arbitrary sequences such
+  as antibiotic resistance genes (AMR) proteins in nucleotide sequences. It uses Blast
+  to find hits to known gene sequences from sequence databases. The inputs are fasta files.
+  Annotation is performed in a similar manner to Prokka and first requires an assembled
+  genome if you have sequenced reads.
+
+base: core18
+grade: stable
+confinement: strict
+icon: snap/gui/icon.png
+
+apps:
+  pathogenie:
+    command: desktop-launch $SNAP/bin/pathogenie-gui
+    extensions:
+      - kde-neon
+    plugs:
+      - home
+      - opengl
+      - network
+      - network-bind
+      - network-control
+      - mount-observe
+      - removable-media
+    environment:
+      LD_LIBRARY_PATH: $SNAP/usr/lib/ncbi-blast+
+parts:
+  pathogenie:
+    plugin: python
+    source: .
+    stage-packages:
+      - ncbi-blast+
+      - clustalw
+      - prodigal
+      - hmmer
+      - aragorn
+      - xsel
+      - python3-pyqt5

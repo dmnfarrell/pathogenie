@@ -1,7 +1,5 @@
 import sys, os
-from PySide2 import QtCore
-from PySide2.QtWidgets import *
-from PySide2.QtGui import *
+
 from PySide2.QtWebEngineWidgets import *
 from Bio import AlignIO
 

@@ -25,10 +25,7 @@ import sys,os,traceback,subprocess
 import glob,platform,shutil
 import pickle
 import threading,time
-from PySide2 import QtCore
-from PySide2.QtWidgets import *
-from PySide2.QtGui import *
-
+from .qt import *
 import pandas as pd
 import numpy as np
 from Bio import SeqIO

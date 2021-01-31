@@ -4,4 +4,4 @@ biopython
 bcbio-gff
 matplotlib
 future
-pyside2
+pyqt5

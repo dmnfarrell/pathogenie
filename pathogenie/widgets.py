@@ -20,11 +20,6 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
 
-from PySide2 import QtCore, QtGui
-from PySide2.QtCore import QObject
-from PySide2.QtWidgets import *
-from PySide2.QtGui import *
-
 import sys, os, io
 import numpy as np
 import pandas as pd
@@ -32,7 +27,7 @@ import string
 from Bio.SeqRecord import SeqRecord
 from Bio.Seq import Seq
 from Bio import SeqIO
-
+from .qt import *
 try:
     _fromUtf8 = QtCore.QString.fromUtf8
 except AttributeError:
@@ -53,7 +48,7 @@ def dialogFromOptions(parent, opts, sections=None,
         font-size: 12px;
     }
     QWidget {
-        max-width: 130px;
+        max-width: 110px;
         min-width: 30px;
         font-size: 14px;
     }
@@ -107,6 +102,10 @@ def dialogFromOptions(parent, opts, sections=None,
                     w.setCurrentIndex(opt['items'].index(str(opt['default'])))
                 except:
                     w.setCurrentIndex(0)
+            elif t == 'list':
+                w = QListWidget()
+                w.setSelectionMode(QAbstractItemView.MultiSelection)
+                w.addItems(opt['items'])
             elif t == 'entry':
                 w = QLineEdit()
                 w.setText(str(val))
@@ -126,8 +125,10 @@ def dialogFromOptions(parent, opts, sections=None,
             elif t == 'spinbox':
                 w = QSpinBox()
                 w.setValue(val)
-                if 'interval' in opt:
-                    w.setSingleStep(opt['interval'])
+                if 'range' in opt:
+                    min,max=opt['range']
+                    w.setRange(min,max)
+                    w.setMinimum(min)
             elif t == 'checkbox':
                 w = QCheckBox()
                 w.setChecked(val)
@@ -457,8 +458,8 @@ class AlignmentWidget(QWidget):
         self.scroll_top()
 
         colors = tools.get_protein_colors()
-        format = QtGui.QTextCharFormat()
-        format.setBackground(QtGui.QBrush(QtGui.QColor('white')))
+        format = QTextCharFormat()
+        format.setBackground(QBrush(QColor('white')))
         cursor = right.textCursor()
 
         ref = aln[0]

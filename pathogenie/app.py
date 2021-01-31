@@ -303,6 +303,7 @@ def hmmer(infile, threads=4, hmm_file=None):
     df = tools.fasta_to_dataframe(infile)
     fetch_sequence_from_url('HAMAP.hmm', hmmdir, ext='')
     db = os.path.join(hmmdir,'HAMAP.hmm')
+    #press the database
     cmd = '%s -f %s' %(hmmpresscmd,db)
     tmp = subprocess.check_output(cmd, shell=True)
     outfile = os.path.join(tempdir, 'hmm.txt')
@@ -488,10 +489,10 @@ def run_annotation(infile, prefix=None, ident=70, threads=4,
         label = ('_').join(c.split('_')[:2])
         #print (c, len(df), label)
         nucseq = contigs[c].seq
-        rec = SeqRecord(nucseq)
+        rec = SeqRecord(nucseq, annotations={"molecule_type": "DNA"})
         #rec.seq.alphabet = generic_dna
         rec.id = label
-        rec.name = label
+        rec.name = label        
         rec.COMMENT = 'annotated with pathogenie'
         df = df.sort_values('start')
         qcols = ['gene','product','locus_tag','translation','length']
