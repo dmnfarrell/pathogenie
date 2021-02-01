@@ -19,8 +19,10 @@
     along with this program; if not, write to the Free Software
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """
-
-from PySide2.QtWidgets import *
+try:
+    from PySide2.QtWidgets import *
+except:
+    from PyQt5.QtWidgets import *
 from pathogenie import gui
 
 def main():
@@ -29,12 +31,12 @@ def main():
     import sys, os
     from argparse import ArgumentParser
     parser = ArgumentParser(description='pathogenie tool')
-    parser.add_argument("-f", "--fasta", dest="filename",
-                        help="input fasta file", metavar="FILE")
-    args = vars(parser.parse_args())
-
+    parser.add_argument("-p", "--proj", dest="project",default=None,
+                        help="load .pathogenie project file", metavar="FILE")
+    args, unknown = parser.parse_known_args()
+    args = vars(args)
     app = QApplication(sys.argv)
-    aw = gui.pathogenieApp()
+    aw = gui.pathogenieApp(**args)
     aw.show()
     app.exec_()
 

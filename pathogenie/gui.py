@@ -37,7 +37,7 @@ logoimg = os.path.join(module_path, 'logo.png')
 
 class pathogenieApp(QMainWindow):
     """GUI Application using PySide2 widgets"""
-    def __init__(self, filenames=[], project=None):
+    def __init__(self, project=None):
 
         QMainWindow.__init__(self)
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -979,18 +979,18 @@ class pathogenieApp(QMainWindow):
 
         from . import __version__
         import matplotlib
-        import PySide2
         pandasver = pd.__version__
         pythonver = platform.python_version()
         mplver = matplotlib.__version__
-        qtver = PySide2.QtCore.__version__
-        if self._check_snap == True:
-            snap='(snap)'
+        if 'PySide2' in sys.modules:
+            import PySide2
+            qtver = 'PySide2='+PySide2.QtCore.__version__
         else:
-            snap=''
+            import PyQt5
+            qtver = 'PyQt5='+ PyQt5.QtCore.QT_VERSION_STR
 
         text='pathogenie GUI\n'\
-                +'version '+__version__+snap+'\n'\
+                +'version '+__version__+'\n'\
                 +'Copyright (C) Damien Farrell 2019-\n'\
                 +'This program is free software; you can redistribute it and/or '\
                 +'modify it under the terms of the GNU General Public License '\
@@ -1082,8 +1082,8 @@ def main():
     import sys, os
     from argparse import ArgumentParser
     parser = ArgumentParser(description='pathogenie gui tool')
-    parser.add_argument("-f", "--fasta", dest="filenames",default=[],
-                        help="input fasta file", metavar="FILE")
+    #parser.add_argument("-f", "--fasta", dest="filename",default=[],
+    #                    help="input fasta file", metavar="FILE")
     parser.add_argument("-p", "--proj", dest="project",default=None,
                         help="load .pathogenie project file", metavar="FILE")
     args = vars(parser.parse_args())

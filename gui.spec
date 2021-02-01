@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-    pathogenie spec file for pyinstaller.
+    pathogenie spec file for pathogenie.
     Created Nov 2019
     Copyright (C) Damien Farrell
 
@@ -20,7 +20,6 @@
 """
 
 block_cipher = None
-
 
 a = Analysis(['main.py'],
              binaries=[('win_binaries/*', 'bin')],

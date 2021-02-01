@@ -50,17 +50,30 @@ You require ncbi-blast+ tools and clustalw for basic gene finding. The following
 * hmmer3
 * aragorn
 
-### Windows
-
-These executables will be downloaded for you when you first launch the program.
-
-Blast also requires the Visual Studio 2015 C++ redistributable runtime package: https://www.microsoft.com/en-us/download/details.aspx?id=48145
-
 ### Linux
+
+The pip command should work fine but you can also install the [snap](https://snapcraft.io/pathogenie) using:
+
+```sudo snap install pathogenie```
+
+Or download the AppImage. Download from the latest [release page](https://github.com/dmnfarrell/pathogenie/releases) and run as follows:
+
+```
+chmod +x pathogenie-0.4.0-x86_64.AppImage
+./pathogenie-0.4.0-x86_64.AppImage
+```
 
 The external binaries can all be installed on Debian/Ubuntu based systems using:
 
 ```sudo apt install ncbi-blast+ clustal prodigal aragorn hmmer```
+
+These are NOT needed if you are using the snap or AppImage.
+
+### Windows
+
+The external executables will be downloaded for you when you first launch the program.
+
+Blast also requires the Visual Studio 2015 C++ redistributable runtime package: https://www.microsoft.com/en-us/download/details.aspx?id=48145
 
 ### OSX
 
