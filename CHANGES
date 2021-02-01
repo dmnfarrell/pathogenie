@@ -7,6 +7,8 @@ CHANGES
 
 * added tree builder
 * sequence alignment viewer
+* can also use pyqt5
+* snap working
 
 0.3.0
 -----

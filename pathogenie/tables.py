@@ -302,13 +302,10 @@ class DataFrameTable(QTableView):
 
         self.model.beginResetModel()
         index = self.model.index
-        try:
-            self.model.dataChanged.emit(0,0)
-        except:
-            self.model.dataChanged.emit(index(0,0),index(0,0))
+        self.model.dataChanged.emit(index(0,0),index(0,0))
         self.model.endResetModel()
         return
-        
+
     def importFile(self):
         dialogs.ImportDialog(self)
         return

@@ -492,7 +492,7 @@ def run_annotation(infile, prefix=None, ident=70, threads=4,
         rec = SeqRecord(nucseq, annotations={"molecule_type": "DNA"})
         #rec.seq.alphabet = generic_dna
         rec.id = label
-        rec.name = label        
+        rec.name = label
         rec.COMMENT = 'annotated with pathogenie'
         df = df.sort_values('start')
         qcols = ['gene','product','locus_tag','translation','length']
@@ -510,7 +510,8 @@ def run_annotation(infile, prefix=None, ident=70, threads=4,
     print ('done')
     return res,recs
 
-def annotate_files(recs, keys=None, outdir='annot', kingdom='bacteria'):
+def annotate_files(recs, keys=None, outdir='annot', kingdom='bacteria',
+                    overwrite=False):
     """Annotate a set of nucleotide seqrecords.
     Args:
         recs: list of SeqRecords
@@ -525,7 +526,7 @@ def annotate_files(recs, keys=None, outdir='annot', kingdom='bacteria'):
             continue
         rec = recs[label]
         gbfile = os.path.join(outdir,label+'.gbk')
-        if os.path.exists(gbfile):
+        if os.path.exists(gbfile) and overwrite == False:
             featdf = tools.genbank_to_dataframe(gbfile)
             featdf['sequence'] = featdf.translation
         else:
@@ -551,6 +552,27 @@ def get_similar_sequences(protname, annot):
         seq = SeqRecord(Seq(s.sequence),id=s.label)#,description=s.host)
         seqs.append(seq)
     return seqs
+
+def find_mutations(recs, ref):
+    """Find the mutations in a set of protein records relative to a
+    reference protein sequence"""
+
+    mutations = {}
+    positions = []
+    for rec in recs:
+        aln = tools.clustal_alignment(seqs=[ref, rec])
+        #print (aln)
+        x = []
+        for pos in range(len(aln[0])):
+            refaa = aln[0,pos]
+            aa = aln[1,pos]
+            if aa != refaa and aa!='-':
+                #print (refaa, aln[:,pos], aa)
+                mut = refaa+str(pos+1)+aa
+                x.append(mut)
+        if len(x)>0:
+            mutations[rec.seq] = x
+    return mutations
 
 def run(filenames=[], db='card', outdir='amr_results', **kwargs):
     """Run pipeline"""
@@ -579,7 +601,7 @@ def main():
 
     import sys, os
     from argparse import ArgumentParser
-    parser = ArgumentParser(description='AMRfinder tool')
+    parser = ArgumentParser(description='pathogenie command line')
 
     parser.add_argument("-f", "--fasta", dest="filenames", nargs='*',
                         help="input fasta file", metavar="FILE")
