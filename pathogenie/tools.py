@@ -51,7 +51,7 @@ def get_cmd(cmd):
     """Get windows version of a command if required"""
 
     if getattr(sys, 'frozen', False):
-        cmd = tools.resource_path('bin/%s.exe' %cmd)
+        cmd = resource_path('bin/%s.exe' %cmd)
     elif platform.system() == 'Windows':
         cmd = os.path.join(bin_path, '%s.exe' %cmd)
     return cmd

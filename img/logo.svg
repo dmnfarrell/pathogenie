@@ -15,7 +15,7 @@
    height="256"
    viewBox="0 0 256 256"
    sodipodi:docname="logo.svg"
-   inkscape:version="1.0.1 (3bc2e813f5, 2020-09-07)"
+   inkscape:version="1.0.1 (0767f8302a, 2020-10-17)"
    inkscape:export-filename="/home/farrell/gitprojects/pathogenie/img/logo.png"
    inkscape:export-xdpi="95.995712"
    inkscape:export-ydpi="95.995712">
@@ -27,7 +27,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -103,7 +103,7 @@
      id="namedview126"
      showgrid="false"
      inkscape:zoom="2.4609375"
-     inkscape:cx="98.459975"
+     inkscape:cx="83.831404"
      inkscape:cy="126.86569"
      inkscape:window-x="431"
      inkscape:window-y="162"
@@ -121,8 +121,8 @@
        height="250.13916"
        x="3.7431135"
        y="3.3367667"
-       ry="46.535236"
-       rx="49.781349" />
+       ry="52.808895"
+       rx="55.979012" />
     <path
        id="rect943-3"
        style="fill:#95ce48;fill-opacity:1;fill-rule:evenodd;stroke:#000003;stroke-width:5.872;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
@@ -138,16 +138,16 @@
        ry="9.1776476"
        transform="matrix(0.72505835,-0.68868744,0.65982026,0.75142346,0,0)" />
     <rect
-       style="fill:#6aaab3;fill-opacity:1;stroke:#000003;stroke-width:6.11805;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:3.5;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:#6aaab3;fill-opacity:1;stroke:#000003;stroke-width:5.27672;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:3.5;stroke-dasharray:none;stroke-opacity:1"
        id="rect1027-5"
-       width="104.03923"
-       height="23.474924"
-       x="-31.608459"
-       y="251.8009"
-       ry="11.737462"
-       transform="matrix(0.70096098,-0.71319963,0.63395647,0.77336873,0,0)" />
+       width="102.98711"
+       height="22.971663"
+       x="-43.830051"
+       y="246.76291"
+       ry="11.485831"
+       transform="matrix(0.74492827,-0.66714457,0.6815184,0.73180098,0,0)" />
     <rect
-       style="fill:#6aaad1;fill-opacity:1;stroke:#000003;stroke-width:4.73398;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:3.5;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:#6aaad1;fill-opacity:1;stroke:#000003;stroke-width:4.73547798;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:3.5;stroke-dasharray:none;stroke-opacity:1"
        id="rect1027-3"
        width="81.62159"
        height="17.915197"

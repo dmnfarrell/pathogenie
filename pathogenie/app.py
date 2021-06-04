@@ -443,8 +443,11 @@ def run_annotation(infile, prefix=None, ident=70, threads=4,
         print ('%s sequences unassigned' %len(df))
         i+=1
     #all results together
+    if len(res) == 0:
+        print ('no blast results found. Check input nucleotide sequences.')
+        print ('Did you select the right kingdom?')
+        return
     res = pd.concat(res)
-    #print (res)
 
     #-------------------------------------------------------
     #run hmmer on unassigned
@@ -495,7 +498,7 @@ def run_annotation(infile, prefix=None, ident=70, threads=4,
         rec.name = label
         rec.COMMENT = 'annotated with pathogenie'
         df = df.sort_values('start')
-        qcols = ['gene','product','locus_tag','translation','length']
+        qcols = ['protein_id','gene','product','locus_tag','translation','length']
         for i,row in df.iterrows():
             row['locus_tag'] = '{p}_{l:05d}'.format(p=prefix,l=l)
             row = row.dropna()
@@ -552,6 +555,22 @@ def get_similar_sequences(protname, annot):
         seq = SeqRecord(Seq(s.sequence),id=s.label)#,description=s.host)
         seqs.append(seq)
     return seqs
+
+def get_protein_orthologs(rec, featsdf):
+    """Get orthologs for a protein sequence from a dataframe of annotated records"""
+
+    outfile = 'proteins.fa'
+    tools.dataframe_to_fasta(featsdf, idkey='locus_tag', descrkey='label', outfile=outfile)
+    tools.make_blast_database(outfile, dbtype='prot')
+    bl = tools.blast_sequences('proteins.fa', [rec], maxseqs=10, evalue=1e-4,
+                              cmd='blastp', threads=4)
+    bl = bl.drop_duplicates('sseqid')
+    #print (bl.sseqid)
+    found = featsdf[featsdf.locus_tag.isin(bl.sseqid)].drop_duplicates('locus_tag')
+    #print (found)
+    recs = tools.dataframe_to_seqrecords(found,
+                            seqkey='translation',idkey='label',desckey='product')
+    return recs
 
 def find_mutations(recs, ref):
     """Find the mutations in a set of protein records relative to a
