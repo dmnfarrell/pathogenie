@@ -29,7 +29,8 @@ setup(
         'console_scripts': [
             'pathogenie=pathogenie.app:main',
             'pathogenie-gui=pathogenie.gui:main',
-            'sequenceviewer=pathogenie.seqview:main']
+            'pathogenie-viewer=pathogenie.seqview:main',
+            'pathogenie-wgmlst=pathogenie.wgmlst:main']
             },
     classifiers = ['Operating System :: OS Independent',
             'Programming Language :: Python :: 2.7',
