@@ -7,14 +7,14 @@ library('TransPhylo')
 library('TreeDist')
 setwd('~/gitprojects/pathogenie/notebooks/')
 
-set.seed(1)
-neg=300/365
-off.r=5
+set.seed(2)
+neg=100/365
+off.r=3
 w.shape=10
 w.scale=0.1
-pi=0.4
+pi=0.25
 simu <- simulateOutbreak(neg=neg,pi=pi,off.r=off.r,w.shape=w.shape,
-                         w.scale=w.scale,dateStartOutbreak=2005,dateT=2008)
+                         w.scale=w.scale,dateStartOutbreak=2010,dateT=2014)
 plot(simu)
 
 ttree<-extractTTree(simu)
@@ -28,16 +28,16 @@ write.tree(p,'sim.newick')
 
 #load ref tree back in
 reftree <- read.tree('sim.newick')
-#reftree <- root(reftree,'1')
+reftree <- root(reftree,'1')
 plot(reftree)
 
 #load snp and mlst trees
 snptree <- read.tree('sim_results/RAxML_bestTree.variants')
 snptree <- drop.tip(snptree,'ref')
-snptree <- root(snptree,'2')
+snptree <- root(snptree,'1')
 plot(snptree)
 mlsttree <- read.tree('mlst.newick')
-mlsttree <- root(mlsttree,'2')
+mlsttree <- root(mlsttree,'1')
 plot(mlsttree)
 
 #estimate mlst tree from dm
@@ -48,6 +48,6 @@ plot(utree)
 
 #compare trees
 TreeDistance(reftree, mlsttree)
-VisualizeMatching(MutualClusteringInfo, snptree, mlsttree)
+VisualizeMatching(MutualClusteringInfo, reftree, mlsttree)
 
 as.matrix(dm)
